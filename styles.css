@@ -31,7 +31,7 @@ h1 span { color: var(--texte); font-weight: 400; }
 .onglets { display: flex; gap: 4px; background: var(--carte); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
 .onglets button {
   flex: 1; border: 0; background: transparent; color: var(--doux);
-  padding: 9px 2px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  padding: 9px 1px; border-radius: 9px; font-size: 12.5px; font-weight: 600;
 }
 .onglets button.actif { background: var(--orange); color: #1a1a1a; }
 
@@ -51,7 +51,7 @@ h1 span { color: var(--texte); font-weight: 400; }
 .champ textarea { resize: none; display: block; overflow: hidden; min-height: 64px; line-height: 1.3; }
 .champ textarea.long { font-size: 14px; letter-spacing: 0; padding-top: 12px; text-transform: uppercase; }
 .champ input:focus, .champ textarea:focus { border-color: var(--orange); }
-#effacer {
+#effacer, .effacer {
   position: absolute; right: 8px; top: 10px;
   border: 0; background: transparent; color: var(--doux); font-size: 20px; padding: 8px;
 }
@@ -135,3 +135,35 @@ footer { margin-top: 26px; font-size: 12px; color: var(--doux); display: flex; f
 .texte-e { font-family: var(--mono); font-size: 14px; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
 .abr { color: var(--bleu); border-bottom: 1px dotted var(--bleu); cursor: pointer; }
 .titre-id { font-family: var(--mono); color: var(--doux); text-align: center; margin: 0 0 8px; font-size: 14px; }
+
+.actions { gap: 8px; }
+.reglages { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.reglages label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--doux); }
+.reglages label:first-child { grid-column: 1 / -1; }
+.reglages input, .reglages select {
+  font: 16px var(--mono); color: var(--texte); background: var(--carte);
+  border: 2px solid var(--bord); border-radius: 10px; padding: 9px 10px; width: 100%; min-width: 0;
+  -webkit-appearance: none; appearance: none;
+}
+.champ textarea.gros-texte { height: 150px; min-height: 150px; overflow-y: auto; font-size: 13px; padding-right: 44px; }
+
+.bilan { background: var(--carte); border: 1px solid var(--bord); border-radius: 14px; padding: 14px 16px; margin: 14px 0 12px; }
+.bilan .chiffres { font-family: var(--mono); font-size: 20px; }
+.bilan .chiffres b { color: var(--orange); }
+.bilan .creneau { color: var(--doux); font-size: 13px; margin-top: 4px; }
+
+.notam { background: var(--carte); border: 1px solid var(--bord); border-left: 4px solid var(--bord); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+.notam.f-R, .notam.f-W { border-left-color: var(--orange); }
+.notam.f-A { border-left-color: var(--bleu); }
+.notam .haut { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.notam .qc { font-family: var(--mono); font-weight: 700; }
+.notam .qc .s { color: var(--orange); } .notam .qc .e { color: var(--vert); }
+.notam .ou { font-family: var(--mono); font-size: 12px; color: var(--doux); white-space: nowrap; }
+.notam .titre { font-weight: 600; margin-top: 2px; }
+.notam .quand { font-size: 13px; color: var(--orange); margin-top: 3px; }
+.notam .extrait { font-family: var(--mono); font-size: 12px; color: var(--doux); margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.notam .raison { font-size: 12px; color: var(--doux); margin-top: 3px; }
+details.ecartes summary { cursor: pointer; padding: 10px 0; color: var(--doux); font-size: 14px; list-style: none; }
+details.ecartes summary::before { content: "▸ "; }
+details.ecartes[open] summary::before { content: "▾ "; }
+h2.section { font-size: 15px; color: var(--orange); margin: 18px 0 8px; font-family: var(--mono); letter-spacing: 1px; }

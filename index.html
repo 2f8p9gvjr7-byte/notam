@@ -20,8 +20,9 @@
 
   <nav class="onglets">
     <button data-tab="decoder" class="actif">Décoder</button>
-    <button data-tab="chercher">Chercher</button>
+    <button data-tab="trier">Trier</button>
     <button data-tab="lexique">Lexique</button>
+    <button data-tab="chercher">Chercher</button>
     <button data-tab="liste">Codes</button>
   </nav>
 
@@ -39,6 +40,31 @@
       </div>
       <div class="exemples" id="exemples"></div>
       <div id="resultat"></div>
+    </section>
+
+    <!-- Trier un briefing -->
+    <section id="tab-trier" class="tab">
+      <p class="aide">Collez tout le briefing SOFIA et réglez votre vol : l'appli met de côté ce qui ne vous concerne pas.</p>
+      <div class="reglages">
+        <label>Départ (heure de Paris)<input id="tDep" type="datetime-local"></label>
+        <label>Durée
+          <select id="tDur">
+            <option value="30">30 min</option><option value="60">1 h</option><option value="90">1 h 30</option>
+            <option value="120" selected>2 h</option><option value="180">3 h</option><option value="240">4 h</option>
+            <option value="360">6 h</option><option value="600">10 h</option>
+          </select>
+        </label>
+        <label>Altitude max (ft)<input id="tAlt" type="number" inputmode="numeric" step="500" min="500" value="4500"></label>
+      </div>
+      <div class="champ">
+        <textarea id="tTexte" class="long gros-texte" spellcheck="false" placeholder="Collez ici le briefing SOFIA complet (sélectionner tout → copier)"></textarea>
+        <button id="tEffacer" class="effacer" aria-label="Effacer">✕</button>
+      </div>
+      <div class="actions">
+        <button id="tMaintenant">⏱ Départ maintenant</button>
+        <button id="tColler">📋 Coller</button>
+      </div>
+      <div id="tResultat"></div>
     </section>
 
     <!-- Chercher -->

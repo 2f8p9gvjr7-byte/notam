@@ -860,4 +860,85 @@ function lireLimite(s) {
   return t;
 }
 
-if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, SUJETS, ETATS, FAMILLES, LEXIQUE };
+
+/* =====================================================================
+   TRI D'UN BRIEFING COMPLET
+   ===================================================================== */
+
+/* Plages pendant lesquelles le NOTAM s'applique entre t1 et t2 (ms UTC).
+   null si les dates sont introuvables. */
+function plagesEntre(n, t1, t2) {
+  const debut = n.debut, fin = n.perm || n.fin == null ? Infinity : n.fin;
+  if (debut == null) return null;
+  const a = Math.max(t1, debut), b = Math.min(t2, fin);
+  if (b <= a) return [];
+  if (!n.horaires) return [[a, b]];
+  const lat = n.lat != null ? n.lat : 46.6, lon = n.lon != null ? n.lon : 2.4;
+  const res = [];
+  for (let j = Math.floor((a - 86400000) / 86400000) * 86400000; j <= b; j += 86400000) {
+    res.push(...plagesDuJour(j, n.horaires, lat, lon));
+  }
+  return fusionner(res.map(([x, y]) => [Math.max(x, a), Math.min(y, b)]).filter(([x, y]) => y > x));
+}
+
+const TITRE_SOFIA = /^(EN-ROUTE|NIL|AUTRES INFORMATIONS|ORGANISATION DE L.ESPACE|SERVICES DE LA CIRCULATION|AVERTISSEMENTS|INSTALLATIONS ET SERVICES|AIRE DE MAN|AIRE DE TRAFIC|BALISAGE|AIDES A L|AERODROME D|SELECTIONNER|FAQ|[A-Z]{4}( [A-Z]{4})* [A-Z' \-]+$)/;
+
+/* Découpe un briefing collé en NOTAM individuels. */
+function decouperBriefing(texte) {
+  const T = (texte || "").replace(/\r/g, "");
+  const re = /(?:^|\n)[ \t]*((?:[A-Z]{4}-)?[A-Z]\d{4}\/\d{2})(?=\s)|\s([A-Z]{4}-[A-Z]\d{4}\/\d{2})(?=\s)/g;
+  const debuts = [];
+  let m;
+  while ((m = re.exec(T))) {
+    const id = m[1] || m[2];
+    debuts.push(m.index + m[0].indexOf(id));
+  }
+  return debuts.map((d, i) => {
+    const bloc = T.slice(d, i + 1 < debuts.length ? debuts[i + 1] : T.length);
+    const lignes = bloc.split("\n");
+    while (lignes.length > 1) {
+      const l = sansAccent(lignes[lignes.length - 1].trim()).toUpperCase();
+      if (l === "" || TITRE_SOFIA.test(l)) lignes.pop(); else break;
+    }
+    return lignes.join("\n").trim();
+  });
+}
+
+const IFR_SEUL_SUJETS = new Set(["PA", "PD", "PI", "PU", "PH", "PO", "PX", "PM", "IC", "ID", "IG", "II", "IL", "IM", "IN", "IO", "IS", "IT", "IU", "IW", "IX", "IY"]);
+const ORDRE_FAMILLE = "RWAMFSCNLOPGIX";
+
+/* Classe chaque NOTAM : à lire, ou écarté avec une raison. */
+function trierBriefing(texte, depart, dureeMin, altMax) {
+  const t1 = depart, t2 = depart + dureeMin * 60000;
+  const blocs = decouperBriefing(texte);
+  const res = { total: blocs.length, garder: [], ecarter: { tt: [], creneau: [], altitude: [], ifr: [], admin: [], checklist: [] } };
+  for (const bloc of blocs) {
+    const n = lireChamps(bloc);
+    n.texte = bloc;
+    const q = n.q && !n.q.erreur ? n.q : null;
+    const E = n.champs.E || "";
+    const traficBrut = ((n.champs.Q || "").split("/")[2] || "").trim();
+
+    if (q && (q.sujet === "KK" || traficBrut === "K")) { res.ecarter.checklist.push(n); continue; }
+    if (q && q.etat === "TT") { res.ecarter.tt.push(n); continue; }
+    if (q && (traficBrut === "I" || IFR_SEUL_SUJETS.has(q.sujet))) { res.ecarter.ifr.push(n); continue; }
+
+    const bas = parseInt(((n.champs.Q || "").split("/")[5] || "").trim(), 10);
+    if (!isNaN(bas) && bas * 100 > altMax) { n.basFt = bas * 100; res.ecarter.altitude.push(n); continue; }
+
+    if (/TEL|TELEPHONE/.test(E) && !/ACTIV|FERM|CLSD|INTERDIT|HORAIRE|ACTIVE|U\/S|HORS SERVICE/.test(E)) { res.ecarter.admin.push(n); continue; }
+
+    const pl = plagesEntre(n, t1, t2);
+    if (pl && pl.length === 0) { res.ecarter.creneau.push(n); continue; }
+    n.pendantVol = pl; // null = dates inconnues → gardé par prudence
+    res.garder.push(n);
+  }
+  const rang = (n) => {
+    const f = n.q && !n.q.erreur ? ORDRE_FAMILLE.indexOf(n.q.sujet[0]) : 99;
+    return f < 0 ? 50 : f;
+  };
+  res.garder.sort((a, b) => rang(a) - rang(b) || (a.champs.A || "").localeCompare(b.champs.A || ""));
+  return res;
+}
+
+if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, SUJETS, ETATS, FAMILLES, LEXIQUE };

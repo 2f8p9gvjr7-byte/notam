@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -238,6 +238,133 @@ $("#resultat").addEventListener("click", (e) => {
   const a = e.target.closest(".abr");
   if (a) toast(`${a.dataset.k} : ${LEXIQUE[a.dataset.k]}`, 3500);
 });
+
+/* ---------- Trier un briefing ---------- */
+const tDep = $("#tDep"), tDur = $("#tDur"), tAlt = $("#tAlt"), tTexte = $("#tTexte");
+const pad = (x) => String(x).padStart(2, "0");
+function valeurLocale(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function departMaintenant() { tDep.value = valeurLocale(Math.floor(Date.now() / 300000) * 300000); trier(); }
+
+const RAISONS = {
+  creneau: "Pas en vigueur pendant votre vol",
+  altitude: "Au-dessus de votre altitude",
+  tt: "Simples renvois vers un SUP AIP (trigger)",
+  ifr: "Concernent seulement l'IFR",
+  admin: "Administratif (téléphones, gestionnaires…)",
+  checklist: "Listes récapitulatives"
+};
+
+function htmlNotamCourt(n, idx, raison) {
+  const q = n.q && !n.q.erreur ? n.q : null;
+  const f = q ? q.sujet[0] : "";
+  const titre = q ? `${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt.charAt(0).toLowerCase() + q.etatTxt.slice(1) : ""}` : "Code non lu";
+  let quand = "";
+  if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
+  else if (n.pendantVol && n.pendantVol.length) {
+    const [a, b] = [n.pendantVol[0][0], n.pendantVol[n.pendantVol.length - 1][1]];
+    const toutLeVol = n.pendantVol.length === 1 && a <= trier.t1 && b >= trier.t2;
+    quand = toutLeVol ? "En vigueur pendant tout le vol"
+      : "En vigueur " + n.pendantVol.map(([x, y]) => `${fHeure(x)} → ${fHeure(y)}`).join(", ");
+  }
+  const lim = n.champs.F || n.champs.G ? `${n.champs.F || "?"} → ${n.champs.G || "?"}` : "";
+  const extrait = (n.champs.E || "").replace(/\s+/g, " ").slice(0, 160);
+  return `<div class="notam f-${f}" data-i="${idx}">
+    <div class="haut"><span class="qc">${q ? `Q<span class="s">${q.sujet}</span><span class="e">${q.etat}</span>` : "—"}</span>
+      <span class="ou">${esc(n.id || "")}${n.champs.A ? " · " + esc(n.champs.A.split(/\s+/)[0]) : ""}</span></div>
+    <div class="titre">${esc(titre)}</div>
+    ${quand ? `<div class="quand">${quand}</div>` : ""}
+    ${lim ? `<div class="raison">Limites : ${esc(lim)}</div>` : ""}
+    ${raison ? `<div class="raison">${esc(raison)}</div>` : ""}
+    <div class="extrait">${esc(extrait)}</div>
+  </div>`;
+}
+
+let listeTriee = [];
+function trier() {
+  const zone = $("#tResultat");
+  const texte = tTexte.value;
+  try {
+    localStorage.setItem("tDur", tDur.value);
+    localStorage.setItem("tAlt", tAlt.value);
+    localStorage.setItem("tTexte", texte);
+    localStorage.setItem("tDep", tDep.value);
+  } catch (e) {}
+  if (!texte.trim()) { zone.innerHTML = ""; return; }
+  const dep = new Date(tDep.value).getTime();
+  const dur = +tDur.value, alt = +tAlt.value || 99999;
+  if (isNaN(dep)) { zone.innerHTML = `<div class="erreur">Indiquez l'heure de départ.</div>`; return; }
+
+  const r = trierBriefing(texte, dep, dur, alt);
+  if (!r.total) {
+    zone.innerHTML = `<div class="erreur">Aucun NOTAM reconnu. Copiez la page SOFIA en entier (les numéros du type LFFA-R1234/26 doivent apparaître).</div>`;
+    return;
+  }
+  trier.t1 = dep; trier.t2 = dep + dur * 60000;
+  listeTriee = [];
+  const ajouter = (n, raison) => { listeTriee.push(n); return htmlNotamCourt(n, listeTriee.length - 1, raison); };
+  const nbEcartes = r.total - r.garder.length;
+
+  let html = `<div class="bilan">
+    <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
+    <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
+  </div>`;
+
+  html += `<h2 class="section">À LIRE</h2>`;
+  html += r.garder.length ? r.garder.map((n) => ajouter(n)).join("") : `<p class="note">Rien ne vous concerne sur ce créneau.</p>`;
+
+  html += `<h2 class="section">ÉCARTÉS</h2>`;
+  for (const [cle, arr] of Object.entries(r.ecarter)) {
+    if (!arr.length) continue;
+    html += `<details class="ecartes"><summary>${esc(RAISONS[cle])} (${arr.length})</summary>${arr.map((n) => {
+      let raison = "";
+      if (cle === "altitude" && n.basFt) raison = `Commence à ${n.basFt.toLocaleString("fr-FR")} ft environ`;
+      if (cle === "creneau") {
+        const st = evaluerNotam(n, trier.t1);
+        const p = st.prochaines && st.prochaines[0];
+        raison = p ? `Plage suivante : ${fPlage(p[0], p[1])}` : st.etat === "expire" ? "Expiré" : "";
+      }
+      return ajouter(n, raison);
+    }).join("")}</details>`;
+  }
+  html += `<p class="note">Le tri est une aide : en cas de doute, un NOTAM reste dans « À lire ». Les limites d'altitude du tri viennent de la ligne Q) et sont approximatives. Touchez un NOTAM pour le détail.</p>`;
+  zone.innerHTML = html;
+}
+
+[tDep, tDur, tAlt].forEach((el) => el.addEventListener("change", trier));
+tAlt.addEventListener("input", trier);
+tTexte.addEventListener("input", trier);
+$("#tMaintenant").addEventListener("click", departMaintenant);
+$("#tEffacer").addEventListener("click", () => { tTexte.value = ""; trier(); tTexte.focus(); });
+$("#tColler").addEventListener("click", async () => {
+  try {
+    const t = await navigator.clipboard.readText();
+    if (t) { tTexte.value = t; trier(); }
+  } catch (e) { toast("Faites un appui long dans le champ puis « Coller »", 3500); tTexte.focus(); }
+});
+$("#tResultat").addEventListener("click", (e) => {
+  const c = e.target.closest(".notam");
+  if (!c) return;
+  const n = listeTriee[+c.dataset.i];
+  if (!n) return;
+  saisie.value = n.texte;
+  ouvrirOnglet("decoder");
+  afficher();
+  window.scrollTo(0, 0);
+});
+
+/* Restauration des réglages du tri */
+try {
+  if (localStorage.getItem("tDur")) tDur.value = localStorage.getItem("tDur");
+  if (localStorage.getItem("tAlt")) tAlt.value = localStorage.getItem("tAlt");
+  if (localStorage.getItem("tTexte")) tTexte.value = localStorage.getItem("tTexte");
+  const d = localStorage.getItem("tDep");
+  if (d && new Date(d).getTime() > Date.now() - 12 * 3600000) tDep.value = d;
+} catch (e) {}
+if (!tDep.value) tDep.value = valeurLocale(Math.floor(Date.now() / 300000) * 300000);
+trier();
 
 /* ---------- Chercher un code ---------- */
 $("#mot").addEventListener("input", () => {
