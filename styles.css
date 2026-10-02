@@ -1,0 +1,137 @@
+:root {
+  --fond: #0d1526;
+  --carte: #16264a;
+  --carte2: #1d3160;
+  --bord: #2a4278;
+  --texte: #e8eef9;
+  --doux: #9fb0d0;
+  --orange: #f5a623;
+  --vert: #4ade80;
+  --rouge: #f87171;
+  --bleu: #5dade2;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fond); color: var(--texte); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px; line-height: 1.45;
+  padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+  max-width: 640px; margin: 0 auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+header { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 10px; }
+h1 { font-family: var(--mono); font-size: 22px; letter-spacing: 2px; margin: 0; color: var(--orange); }
+h1 span { color: var(--texte); font-weight: 400; }
+.statut { font-size: 14px; color: var(--vert); }
+.statut.horsligne { color: var(--orange); }
+
+.onglets { display: flex; gap: 4px; background: var(--carte); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
+.onglets button {
+  flex: 1; border: 0; background: transparent; color: var(--doux);
+  padding: 9px 2px; border-radius: 9px; font-size: 13px; font-weight: 600;
+}
+.onglets button.actif { background: var(--orange); color: #1a1a1a; }
+
+.tab { display: none; }
+.tab.actif { display: block; }
+
+.aide { display: block; color: var(--doux); font-size: 14px; margin-bottom: 8px; }
+
+.champ { position: relative; }
+.champ input, .champ textarea {
+  width: 100%; font-family: var(--mono); font-size: 26px; letter-spacing: 3px;
+  padding: 14px 48px 14px 16px; border-radius: 12px;
+  border: 2px solid var(--bord); background: var(--carte); color: var(--texte);
+  text-transform: uppercase; outline: none;
+}
+#mot { text-transform: none; letter-spacing: 0; font-size: 18px; font-family: inherit; }
+.champ textarea { resize: none; display: block; overflow: hidden; min-height: 64px; line-height: 1.3; }
+.champ textarea.long { font-size: 14px; letter-spacing: 0; padding-top: 12px; text-transform: uppercase; }
+.champ input:focus, .champ textarea:focus { border-color: var(--orange); }
+#effacer {
+  position: absolute; right: 8px; top: 10px;
+  border: 0; background: transparent; color: var(--doux); font-size: 20px; padding: 8px;
+}
+
+.exemples { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+.exemples button {
+  border: 1px solid var(--bord); background: transparent; color: var(--bleu);
+  font-family: var(--mono); font-size: 14px; padding: 5px 10px; border-radius: 20px;
+}
+
+.carte { background: var(--carte); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--bord); }
+
+/* Code éclaté en couleurs */
+.code { font-family: var(--mono); font-size: 40px; text-align: center; letter-spacing: 4px; margin: 4px 0 14px; }
+.code .q { color: var(--doux); }
+.code .s { color: var(--orange); }
+.code .e { color: var(--vert); }
+
+.ligne { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--bord); }
+.ligne:first-of-type { border-top: 0; }
+.ligne .k { font-family: var(--mono); font-weight: 700; min-width: 44px; font-size: 18px; }
+.ligne .k.s { color: var(--orange); }
+.ligne .k.e { color: var(--vert); }
+.ligne .k.f { color: var(--doux); }
+.ligne .v { flex: 1; }
+.ligne .v small { display: block; color: var(--doux); font-size: 13px; }
+
+.resume { font-size: 19px; font-weight: 600; text-align: center; margin: 0 0 10px; }
+
+.conseil { background: rgba(245,166,35,.12); border-left: 4px solid var(--orange); border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 15px; }
+.conseil.alerte { background: rgba(248,113,113,.12); border-color: var(--rouge); }
+
+.details dt { color: var(--doux); font-size: 13px; margin-top: 8px; }
+.details dd { margin: 2px 0 0; }
+.details h3, .liste-titre { font-size: 14px; color: var(--orange); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 6px; }
+
+.erreur { color: var(--rouge); text-align: center; padding: 16px; }
+
+.groupe { margin-bottom: 18px; }
+.groupe h2 { font-size: 15px; color: var(--orange); margin: 16px 0 6px; font-family: var(--mono); }
+.item { display: flex; gap: 12px; padding: 8px 12px; background: var(--carte); border-radius: 8px; margin-bottom: 4px; align-items: baseline; }
+.item b { font-family: var(--mono); min-width: 32px; color: var(--texte); }
+.item.cliquable { cursor: pointer; }
+
+details.groupe summary { cursor: pointer; font-family: var(--mono); color: var(--orange); font-size: 15px; padding: 10px 0; list-style: none; }
+details.groupe summary::before { content: "▸ "; }
+details.groupe[open] summary::before { content: "▾ "; }
+
+footer { margin-top: 26px; font-size: 12px; color: var(--doux); display: flex; flex-direction: column; gap: 4px; text-align: center; }
+#version { font-family: var(--mono); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 20px);
+  transform: translateX(-50%) translateY(100px); opacity: 0;
+  background: var(--vert); color: #0d1526; font-weight: 700;
+  padding: 10px 18px; border-radius: 24px; transition: all .3s; z-index: 10; white-space: nowrap;
+}
+.toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+.actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+.actions button { border: 1px solid var(--bord); background: var(--carte); color: var(--texte); font-size: 14px; padding: 7px 14px; border-radius: 20px; }
+
+/* Statut du NOTAM complet */
+.statut-notam { border-radius: 14px; padding: 16px; margin-bottom: 12px; text-align: center; border: 2px solid; }
+.statut-notam .gros { font-family: var(--mono); font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+.statut-notam .detail { margin-top: 6px; font-size: 15px; }
+.statut-notam.actif { border-color: var(--orange); background: rgba(245,166,35,.14); }
+.statut-notam.actif .gros { color: var(--orange); }
+.statut-notam.inactif, .statut-notam.futur { border-color: var(--vert); background: rgba(74,222,128,.10); }
+.statut-notam.inactif .gros, .statut-notam.futur .gros { color: var(--vert); }
+.statut-notam.expire, .statut-notam.renvoi, .statut-notam.inconnu { border-color: var(--doux); background: rgba(159,176,208,.10); }
+.statut-notam.expire .gros, .statut-notam.renvoi .gros, .statut-notam.inconnu .gros { color: var(--texte); }
+.statut-notam .heure { font-size: 12px; color: var(--doux); margin-top: 8px; }
+
+.plages { list-style: none; padding: 0; margin: 6px 0 0; }
+.plages li { padding: 6px 0; border-top: 1px solid var(--bord); font-family: var(--mono); font-size: 14px; }
+.plages li:first-child { border-top: 0; }
+.plages li small { color: var(--doux); font-family: inherit; }
+.note { color: var(--doux); font-size: 13px; margin-top: 8px; }
+
+.texte-e { font-family: var(--mono); font-size: 14px; white-space: pre-wrap; word-break: break-word; line-height: 1.55; }
+.abr { color: var(--bleu); border-bottom: 1px dotted var(--bleu); cursor: pointer; }
+.titre-id { font-family: var(--mono); color: var(--doux); text-align: center; margin: 0 0 8px; font-size: 14px; }

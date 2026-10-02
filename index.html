@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Décodeur Q-code NOTAM</title>
+  <meta name="theme-color" content="#0d1526">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Q-code">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header>
+    <h1>Q-CODE <span>NOTAM</span></h1>
+    <div id="statut" class="statut" title="État de la connexion">●</div>
+  </header>
+
+  <nav class="onglets">
+    <button data-tab="decoder" class="actif">Décoder</button>
+    <button data-tab="chercher">Chercher</button>
+    <button data-tab="lexique">Lexique</button>
+    <button data-tab="liste">Codes</button>
+  </nav>
+
+  <main>
+    <!-- Décoder -->
+    <section id="tab-decoder" class="tab actif">
+      <label for="saisie" class="aide">Tapez un code (QRRCA) ou collez le NOTAM entier copié depuis SOFIA</label>
+      <div class="champ">
+        <textarea id="saisie" rows="1" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                  placeholder="QRRCA"></textarea>
+        <button id="effacer" aria-label="Effacer">✕</button>
+      </div>
+      <div class="actions">
+        <button id="coller">📋 Coller</button>
+      </div>
+      <div class="exemples" id="exemples"></div>
+      <div id="resultat"></div>
+    </section>
+
+    <!-- Chercher -->
+    <section id="tab-chercher" class="tab">
+      <label for="mot" class="aide">Cherchez un mot (voltige, piste, zone, fermé…) pour trouver le code</label>
+      <div class="champ">
+        <input id="mot" type="search" autocomplete="off" spellcheck="false" placeholder="voltige">
+      </div>
+      <div id="resultatsMot"></div>
+    </section>
+
+    <!-- Lexique -->
+    <section id="tab-lexique" class="tab">
+      <label for="abrev" class="aide">Abréviation (PPR, RDL, HJ…) ou mot en français (soleil, piste…)</label>
+      <div class="champ">
+        <input id="abrev" type="search" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="PPR">
+      </div>
+      <div id="resultatsLex"></div>
+    </section>
+
+    <!-- Liste -->
+    <section id="tab-liste" class="tab">
+      <div id="liste"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="version"></span>
+    <span class="mention">Aide au décodage — ne remplace pas la lecture du NOTAM complet.</span>
+  </footer>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./codes.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
