@@ -622,6 +622,12 @@ function lireChamps(texte) {
     if (!(mk.l in champs)) champs[mk.l] = T.slice(mk.fin, suite).trim();
   });
   const entete = marques.length ? T.slice(0, marques[0].debut) : T;
+  // Limites F/G : on ne garde que la valeur (un titre SOFIA peut suivre, ex. « FL145 OBSTACLES »)
+  for (const l of ["F", "G"]) {
+    if (!champs[l]) continue;
+    const v = champs[l].match(/^(SFC|GND|UNL\w*|FL\s*\d{2,3}|\d+\s*(?:FT|M)(?:\s*(?:AGL|AMSL|ASFC|MSL|SFC))?)/);
+    champs[l] = v ? v[1] : champs[l].split("\n")[0].trim();
+  }
 
   const n = { champs };
   const id = T.match(/\b(?:([A-Z]{4})-)?([A-Z]\d{4}\/\d{2})\b/);
@@ -881,7 +887,7 @@ function plagesEntre(n, t1, t2) {
   return fusionner(res.map(([x, y]) => [Math.max(x, a), Math.min(y, b)]).filter(([x, y]) => y > x));
 }
 
-const TITRE_SOFIA = /^(EN-ROUTE|NIL|AUTRES INFORMATIONS|ORGANISATION DE L.ESPACE|SERVICES DE LA CIRCULATION|AVERTISSEMENTS|INSTALLATIONS ET SERVICES|AIRE DE MAN|AIRE DE TRAFIC|BALISAGE|AIDES A L|AERODROME D|SELECTIONNER|FAQ|[A-Z]{4}( [A-Z]{4})* [A-Z' \-]+$)/;
+const TITRE_SOFIA = /^(?:(?:OBSTACLES|EN-ROUTE|NIL|AUTRES INFORMATIONS|RESTRICTIONS DE L.ESPACE AERIEN|ORGANISATION DE L.ESPACE AERIEN ET PROCEDURES|SERVICES DE LA CIRCULATION AERIENNE ET VOLMET|INSTALLATIONS DE COMMUNICATION ET DE SURVEILLANCE|GNSS - INSTALLATIONS DE RADIONAVIGATION|AVERTISSEMENTS A LA NAVIGATION|INSTALLATIONS ET SERVICES|AIRE DE MANOEUVRE|AIRE DE TRAFIC|BALISAGE|AIDES A L.ATTERRISSAGE.*|AERODROME (?:DE DEPART|D.ARRIVEE|DE DEGAGEMENT)|SELECTIONNER TOUS LES NOTAM.*|FAQ.*)\s*:?|(?:LF|LS|ED|EB|EL)[A-Z]{2}(?: [A-Z]{4})* [A-Z' \-]+)$/;
 
 /* Majuscules sans accents (les NOTAM sont en majuscules, les titres SOFIA non). */
 function majSansAccent(t) {
@@ -899,15 +905,23 @@ const RUBRIQUES_SOFIA = [
   "AUTRES INFORMATIONS", "EN-ROUTE", "BALISAGE"
 ];
 
+const OACI_TITRE = "(?:LF|LS|ED|EB|EL)[A-Z]{2}";
+const RE_TITRE_FIN = new RegExp("\\s+" + OACI_TITRE + "(?:\\s+[A-Z][A-Z'\\-]*)*(?:\\s+-\\s+" + OACI_TITRE + "(?:\\s+[A-Z][A-Z'\\-]*)*)*\\s*:?\\s*$");
+
 function nettoyerBloc(b) {
   let t = b
     .replace(/\b\d+\s*\/\s*\d+\s+SIA FRANCE\s*-\s*SOFIA-BRIEFING\b/g, " ")   // pieds de page PDF
-    .replace(/\bSELECTIONNER TOUS LES NOTAM\s*\(\d+\)/g, " ");
-  for (const r of RUBRIQUES_SOFIA) t = t.split(r).join(" ");
-  t = t.replace(/(\s+NIL)+\s*$/g, "");
-  // Titre d'aérodrome ou de FIR collé en fin de bloc (ex. « LFJL METZ NANCY LORRAINE »)
-  t = t.replace(/\s+[LE][A-Z]{3}(?:\s+[A-Z][A-Z'\-]*)*(?:\s+-\s+[LE][A-Z]{3}(?:\s+[A-Z][A-Z'\-]*)*)*\s*$/, "");
-  return t.replace(/[ \t]{2,}/g, " ").trim();
+    .replace(/\bSELECTIONNER TOUS LES NOTAM\s*\(\d+\)/g, " ")
+    .trim();
+  // On retire, en fin de bloc seulement, les titres SOFIA collés (rubriques, aérodromes, FIR)
+  const fins = [...RUBRIQUES_SOFIA, "NIL", "OBSTACLES"];
+  let avant;
+  do {
+    avant = t;
+    t = t.replace(RE_TITRE_FIN, "").trim();
+    for (const r of fins) if (t.endsWith(" " + r) || t.endsWith("\n" + r)) t = t.slice(0, -r.length).trim();
+  } while (t !== avant);
+  return t.replace(/[ \t]{2,}/g, " ");
 }
 
 /* Découpe un briefing collé en NOTAM individuels. */

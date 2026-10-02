@@ -167,3 +167,17 @@ details.ecartes summary { cursor: pointer; padding: 10px 0; color: var(--doux); 
 details.ecartes summary::before { content: "▸ "; }
 details.ecartes[open] summary::before { content: "▾ "; }
 h2.section { font-size: 15px; color: var(--orange); margin: 18px 0 8px; font-family: var(--mono); letter-spacing: 1px; }
+
+.retour { position: sticky; top: 0; z-index: 5; background: var(--fond); padding: 6px 0 10px; }
+.retour button { width: 100%; border: 2px solid var(--orange); background: rgba(245,166,35,.14); color: var(--orange); font-weight: 700; font-size: 16px; padding: 11px; border-radius: 12px; }
+.notam .plus { font-size: 12px; color: var(--bleu); margin-top: 6px; }
+.notam.ouvert .extrait, .notam.ouvert .plus { display: none; }
+.notam .deplie { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bord); cursor: default; }
+.notam .deplie dl { margin: 0 0 8px; }
+.notam .deplie dt { color: var(--doux); font-size: 12px; margin-top: 6px; }
+.notam .deplie dd { margin: 2px 0 0; font-size: 14px; }
+.notam .deplie .texte-e { font-size: 13px; }
+.notam .deplie .liens { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.notam .deplie .liens button { border: 1px solid var(--bord); background: var(--carte2); color: var(--texte); font-size: 13px; padding: 7px 12px; border-radius: 18px; }
+.btn-pdf { width: 100%; margin-top: 12px; border: 0; background: var(--orange); color: #1a1a1a; font-weight: 700; font-size: 16px; padding: 12px; border-radius: 12px; }
+.btn-pdf:disabled { opacity: .6; }

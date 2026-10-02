@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -290,7 +290,21 @@ function htmlNotamCourt(n, idx, raison) {
     ${lim ? `<div class="raison">Limites : ${esc(lim)}</div>` : ""}
     ${raison ? `<div class="raison">${esc(raison)}</div>` : ""}
     <div class="extrait">${esc(extrait)}</div>
+    <div class="plus">▾ Touchez pour lire le NOTAM en entier</div>
   </div>`;
+}
+
+/* Détail déplié sur place, sans quitter la liste */
+function htmlDeplie(n) {
+  const fin = n.perm || n.fin == null ? Infinity : n.fin;
+  let h = `<div class="deplie"><dl>`;
+  if (n.debut != null) h += `<dt>Validité (heure de Paris)</dt><dd>Du ${fDate(n.debut)} au ${fin === Infinity ? "permanent" : fDate(fin)}${n.estime ? " (estimée)" : ""}</dd>`;
+  if (n.champs.D) h += `<dt>Horaires (champ D, en UTC)</dt><dd class="texte-e">${esc(n.champs.D)}</dd>`;
+  if (n.champs.F || n.champs.G) h += `<dt>Limites</dt><dd>${esc(lireLimite(n.champs.F) || "?")}<br>→ ${esc(lireLimite(n.champs.G) || "?")}</dd>`;
+  h += `</dl>`;
+  if (n.champs.E) h += `<div class="texte-e">${surligner(n.champs.E).html}</div>`;
+  h += `<div class="liens"><button data-act="fermer">▴ Replier</button><button data-act="analyse">Analyse complète →</button></div></div>`;
+  return h;
 }
 
 /* Reprend automatiquement les réglages de l'en-tête du PIB SOFIA (une fois par briefing collé). */
@@ -319,6 +333,7 @@ function appliquerEntete(texte) {
 }
 
 let listeTriee = [];
+let dernierTri = null;
 function trier() {
   const zone = $("#tResultat");
   const texte = tTexte.value;
@@ -348,7 +363,10 @@ function trier() {
     <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
     ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
+    <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM à lire</button>
   </div>`;
+  dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete };
+  chargerJsPDF();
 
   html += `<h2 class="section">À LIRE</h2>`;
   html += r.garder.length ? r.garder.map((n) => ajouter(n)).join("") : `<p class="note">Rien ne vous concerne sur ce créneau.</p>`;
@@ -382,16 +400,42 @@ $("#tColler").addEventListener("click", async () => {
     if (t) { tTexte.value = t; trier(); }
   } catch (e) { toast("Faites un appui long dans le champ puis « Coller »", 3500); tTexte.focus(); }
 });
+let positionTri = 0;
 $("#tResultat").addEventListener("click", (e) => {
+  if (e.target.closest("#btnPdf")) return;
+  const abr = e.target.closest(".abr");
+  if (abr) { toast(`${abr.dataset.k} : ${LEXIQUE[abr.dataset.k]}`, 3500); return; }
   const c = e.target.closest(".notam");
   if (!c) return;
   const n = listeTriee[+c.dataset.i];
   if (!n) return;
-  saisie.value = n.texte;
-  ouvrirOnglet("decoder");
-  afficher();
-  window.scrollTo(0, 0);
+  const act = e.target.closest("button") && e.target.closest("button").dataset.act;
+  if (act === "analyse") {
+    positionTri = window.scrollY;
+    saisie.value = n.texte;
+    ouvrirOnglet("decoder");
+    afficher();
+    $("#retour").hidden = false;
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (act === "fermer" || (c.classList.contains("ouvert") && !e.target.closest(".deplie"))) {
+    c.classList.remove("ouvert");
+    const d = c.querySelector(".deplie"); if (d) d.remove();
+    return;
+  }
+  if (c.classList.contains("ouvert")) return; // clic dans le texte déplié : on ne replie pas
+  c.classList.add("ouvert");
+  c.insertAdjacentHTML("beforeend", htmlDeplie(n));
 });
+
+/* Retour au tri depuis l'analyse complète */
+$("#btnRetour").addEventListener("click", () => {
+  $("#retour").hidden = true;
+  ouvrirOnglet("trier");
+  requestAnimationFrame(() => window.scrollTo(0, positionTri));
+});
+saisie.addEventListener("input", () => { $("#retour").hidden = true; });
 
 /* Restauration des réglages du tri */
 try {
@@ -403,6 +447,130 @@ try {
 } catch (e) {}
 if (!tDep.value) tDep.value = valeurLocale(Math.floor(Date.now() / 300000) * 300000);
 trier();
+
+/* ---------- PDF des NOTAM à lire (hors connexion, via jsPDF) ---------- */
+let jsPDFpret = null;
+function chargerJsPDF() {
+  if (jsPDFpret) return jsPDFpret;
+  jsPDFpret = new Promise((ok, ko) => {
+    if (window.jspdf) return ok();
+    const sc = document.createElement("script");
+    sc.src = "./jspdf.min.js";
+    sc.onload = () => ok();
+    sc.onerror = () => { jsPDFpret = null; ko(); };
+    document.head.appendChild(sc);
+  });
+  return jsPDFpret;
+}
+
+/* Les polices standard du PDF ne connaissent pas certains signes : on les remplace. */
+const pdfTxt = (t) => String(t || "")
+  .replace(/[  ]/g, " ").replace(/→/g, "->").replace(/≈/g, "~").replace(/[‘’]/g, "'")
+  .replace(/[“”«»]/g, '"').replace(/[^\x00-\xFF€…–—·•Œœ'"]/g, "");
+
+function construirePDF() {
+  const { r, t1, t2, alt, entete: en } = dernierTri;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const M = 15, L = 180, BAS = 282;
+  let y = M;
+
+  const place = (h) => { if (y + h > BAS) { doc.addPage(); y = M; } };
+  const ecrire = (texte, { taille = 10, gras = false, police = "helvetica", couleur = [20, 20, 20], retrait = 0, interligne = 1.25 } = {}) => {
+    doc.setFont(police, gras ? "bold" : "normal");
+    doc.setFontSize(taille);
+    doc.setTextColor(...couleur);
+    const lignes = doc.splitTextToSize(pdfTxt(texte), L - retrait);
+    const h = taille * 0.3528 * interligne;
+    for (const l of lignes) { place(h); doc.text(l, M + retrait, y + h * 0.8); y += h; }
+  };
+  const trait = (couleur = [190, 190, 190]) => { place(4); doc.setDrawColor(...couleur); doc.setLineWidth(0.3); doc.line(M, y + 1.5, M + L, y + 1.5); y += 4; };
+  const DATEH = (ms) => `${fDate(ms)} (${fUTC(ms)} UTC)`;
+
+  // En-tête
+  ecrire("Briefing NOTAM" + (en && (en.de || en.vers) ? ` — ${en.de || ""} -> ${en.vers || ""}` : ""), { taille: 18, gras: true });
+  y += 1;
+  ecrire(`Vol : ${DATEH(t1)} -> ${DATEH(t2)}`, { taille: 10 });
+  ecrire(`Altitude maximale : ${alt.toLocaleString("fr-FR")} ft   ·   Heures en heure de Paris`, { taille: 10 });
+  const nbE = r.total - r.garder.length;
+  ecrire(`${r.garder.length} NOTAM à lire · ${nbE} écarté${nbE > 1 ? "s" : ""} sur ${r.total}   ·   Édité le ${fDate(Date.now())}`, { taille: 10, couleur: [90, 90, 90] });
+  trait([245, 166, 35]);
+
+  // NOTAM à lire
+  ecrire("NOTAM À LIRE", { taille: 13, gras: true, couleur: [200, 120, 0] });
+  y += 1;
+  if (!r.garder.length) ecrire("Aucun NOTAM ne concerne ce créneau.", { taille: 10 });
+  r.garder.forEach((n, i) => {
+    const q = n.q && !n.q.erreur ? n.q : null;
+    place(18);
+    ecrire(`${i + 1}. ${n.id || "NOTAM"}   ·   ${n.champs.A || ""}   ·   ${q ? q.code : ""}`, { taille: 11, gras: true });
+    if (q) ecrire(`${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt : ""}`, { taille: 10, gras: true, couleur: [60, 60, 60] });
+    if (n.pendantVol === null) ecrire("Dates non trouvées : à vérifier", { taille: 9.5, couleur: [180, 0, 0] });
+    else if (n.pendantVol && n.pendantVol.length) {
+      const tout = n.pendantVol.length === 1 && n.pendantVol[0][0] <= t1 && n.pendantVol[0][1] >= t2;
+      ecrire(tout ? "En vigueur pendant tout le vol" : "En vigueur pendant le vol : " + n.pendantVol.map(([a, b]) => `${fHeure(a)} -> ${fHeure(b)}`).join(", "), { taille: 9.5, gras: true, couleur: [200, 90, 0] });
+    }
+    const fin = n.perm || n.fin == null ? Infinity : n.fin;
+    if (n.debut != null) ecrire(`Validité : du ${fDate(n.debut)} au ${fin === Infinity ? "permanent" : fDate(fin)}${n.estime ? " (estimée)" : ""}`, { taille: 9.5 });
+    if (n.champs.D) ecrire(`Horaires (D, UTC) : ${n.champs.D}`, { taille: 9.5 });
+    if (n.champs.F || n.champs.G) ecrire(`Limites : ${lireLimite(n.champs.F) || "?"} -> ${lireLimite(n.champs.G) || "?"}`, { taille: 9.5 });
+    if (n.champs.E) { y += 1; ecrire(n.champs.E, { taille: 9, police: "courier", couleur: [30, 30, 30], retrait: 3, interligne: 1.3 }); }
+    trait();
+  });
+
+  // Écartés (liste courte, pour mémoire)
+  const groupes = Object.entries(r.ecarter).filter(([, a]) => a.length);
+  if (groupes.length) {
+    y += 2;
+    ecrire("NOTAM ÉCARTÉS (pour mémoire)", { taille: 12, gras: true, couleur: [90, 90, 90] });
+    for (const [cle, arr] of groupes) {
+      y += 1;
+      ecrire(`${RAISONS[cle]} (${arr.length})`, { taille: 10, gras: true, couleur: [90, 90, 90] });
+      arr.forEach((n) => {
+        const q = n.q && !n.q.erreur ? n.q : null;
+        ecrire(`• ${n.id || ""} · ${n.champs.A || ""} · ${q ? q.code + " " + q.sujetTxt : ""}`, { taille: 9, couleur: [90, 90, 90], retrait: 3 });
+      });
+    }
+  }
+
+  // Pied de page
+  const nb = doc.getNumberOfPages();
+  for (let i = 1; i <= nb; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(130, 130, 130);
+    doc.text(pdfTxt("Q-code NOTAM v" + APP_VERSION + " — aide au tri, ne remplace pas le briefing officiel"), M, 292);
+    doc.text(`page ${i}/${nb}`, M + L, 292, { align: "right" });
+  }
+  return doc;
+}
+
+$("#tResultat").addEventListener("click", async (e) => {
+  const b = e.target.closest("#btnPdf");
+  if (!b || !dernierTri) return;
+  b.disabled = true;
+  try {
+    if (!window.jspdf) { b.textContent = "Préparation…"; await chargerJsPDF(); }
+    const doc = construirePDF();
+    const d = new Date(dernierTri.t1);
+    const en = dernierTri.entete || {};
+    const nom = `NOTAM_${en.de ? en.de + "-" + (en.vers || "") + "_" : ""}${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.pdf`;
+    const blob = doc.output("blob");
+    const fichier = new File([blob], nom, { type: "application/pdf" });
+    if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+      try { await navigator.share({ files: [fichier], title: "Briefing NOTAM" }); }
+      catch (err) { if (err && err.name !== "AbortError") throw err; }
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = nom; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+  } catch (err) {
+    toast("Impossible de créer le PDF", 3500);
+  } finally {
+    b.disabled = false; b.textContent = "📄 PDF des NOTAM à lire";
+  }
+});
 
 /* ---------- Chercher un code ---------- */
 $("#mot").addEventListener("input", () => {
