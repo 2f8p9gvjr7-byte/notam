@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -80,8 +80,19 @@ function afficher() {
   if (!v.trim()) { zone.innerHTML = ""; return; }
 
   if (estNotamComplet(v)) {
-    zone.innerHTML = htmlNotam(v);
-    minuterie = setInterval(() => { if (!document.hidden) zone.innerHTML = htmlNotam(saisie.value); }, 60000);
+    const blocs = decouperBriefing(v);
+    if (blocs.length > 1) {
+      zone.innerHTML = `<div class="statut-notam renvoi"><div class="gros">${blocs.length} NOTAM DANS CE TEXTE</div>
+        <div class="detail">L'onglet Décoder lit un seul NOTAM à la fois. Pour un briefing complet, utilisez le tri.</div>
+        <div class="actions" style="justify-content:center"><button id="versTrier">Trier ces ${blocs.length} NOTAM →</button></div></div>`;
+      $("#versTrier").addEventListener("click", () => {
+        tTexte.value = v; ouvrirOnglet("trier"); trier(); window.scrollTo(0, 0);
+      });
+      return;
+    }
+    const un = blocs.length === 1 ? blocs[0] : v;
+    zone.innerHTML = htmlNotam(un);
+    minuterie = setInterval(() => { if (!document.hidden) zone.innerHTML = htmlNotam(un); }, 60000);
     return;
   }
   const r = decoder(v);
@@ -282,10 +293,36 @@ function htmlNotamCourt(n, idx, raison) {
   </div>`;
 }
 
+/* Reprend automatiquement les réglages de l'en-tête du PIB SOFIA (une fois par briefing collé). */
+function choisirDuree(min) {
+  if (![...tDur.options].some((o) => +o.value === min)) {
+    const o = document.createElement("option");
+    o.value = min;
+    o.textContent = Math.floor(min / 60) + " h" + (min % 60 ? " " + pad(min % 60) : "");
+    tDur.appendChild(o);
+  }
+  tDur.value = String(min);
+}
+let entete = null;
+function appliquerEntete(texte) {
+  entete = lireEntetePIB(texte);
+  if (!entete) return;
+  const sig = [entete.depart, entete.dureeMin, entete.plafondFt].join("|");
+  let deja = null;
+  try { deja = localStorage.getItem("tEntete"); } catch (e) {}
+  if (deja === sig) return;
+  tDep.value = valeurLocale(entete.depart);
+  if (entete.dureeMin) choisirDuree(entete.dureeMin);
+  if (entete.plafondFt) tAlt.value = entete.plafondFt;
+  try { localStorage.setItem("tEntete", sig); } catch (e) {}
+  toast("Réglages repris du briefing SOFIA", 3000);
+}
+
 let listeTriee = [];
 function trier() {
   const zone = $("#tResultat");
   const texte = tTexte.value;
+  if (texte.trim()) appliquerEntete(texte);
   try {
     localStorage.setItem("tDur", tDur.value);
     localStorage.setItem("tAlt", tAlt.value);
@@ -309,6 +346,7 @@ function trier() {
 
   let html = `<div class="bilan">
     <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
+    ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
   </div>`;
 
@@ -357,7 +395,7 @@ $("#tResultat").addEventListener("click", (e) => {
 
 /* Restauration des réglages du tri */
 try {
-  if (localStorage.getItem("tDur")) tDur.value = localStorage.getItem("tDur");
+  if (localStorage.getItem("tDur")) choisirDuree(+localStorage.getItem("tDur"));
   if (localStorage.getItem("tAlt")) tAlt.value = localStorage.getItem("tAlt");
   if (localStorage.getItem("tTexte")) tTexte.value = localStorage.getItem("tTexte");
   const d = localStorage.getItem("tDep");

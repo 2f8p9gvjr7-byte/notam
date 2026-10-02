@@ -883,9 +883,36 @@ function plagesEntre(n, t1, t2) {
 
 const TITRE_SOFIA = /^(EN-ROUTE|NIL|AUTRES INFORMATIONS|ORGANISATION DE L.ESPACE|SERVICES DE LA CIRCULATION|AVERTISSEMENTS|INSTALLATIONS ET SERVICES|AIRE DE MAN|AIRE DE TRAFIC|BALISAGE|AIDES A L|AERODROME D|SELECTIONNER|FAQ|[A-Z]{4}( [A-Z]{4})* [A-Z' \-]+$)/;
 
+/* Majuscules sans accents (les NOTAM sont en majuscules, les titres SOFIA non). */
+function majSansAccent(t) {
+  return (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/Œ/g, "OE");
+}
+
+/* Titres de rubriques SOFIA à retirer du texte des NOTAM (copie sur une seule ligne). */
+const RUBRIQUES_SOFIA = [
+  "ORGANISATION DE L'ESPACE AERIEN ET PROCEDURES", "SERVICES DE LA CIRCULATION AERIENNE ET VOLMET",
+  "INSTALLATIONS DE COMMUNICATION ET DE SURVEILLANCE", "GNSS - INSTALLATIONS DE RADIONAVIGATION",
+  "INSTALLATIONS DE RADIONAVIGATION", "RESTRICTIONS DE L'ESPACE AERIEN", "AVERTISSEMENTS A LA NAVIGATION",
+  "AERODROME DE DEPART :", "AERODROME DE DEPART", "AERODROME D'ARRIVEE :", "AERODROME D'ARRIVEE",
+  "AERODROME DE DEGAGEMENT :", "AERODROME DE DEGAGEMENT", "INSTALLATIONS ET SERVICES", "AIRE DE MANOEUVRE",
+  "AIRE DE TRAFIC", "AIDES A L'ATTERRISSAGE, INSTALLATIONS RADIONAVIGATION ET GNSS",
+  "AUTRES INFORMATIONS", "EN-ROUTE", "BALISAGE"
+];
+
+function nettoyerBloc(b) {
+  let t = b
+    .replace(/\b\d+\s*\/\s*\d+\s+SIA FRANCE\s*-\s*SOFIA-BRIEFING\b/g, " ")   // pieds de page PDF
+    .replace(/\bSELECTIONNER TOUS LES NOTAM\s*\(\d+\)/g, " ");
+  for (const r of RUBRIQUES_SOFIA) t = t.split(r).join(" ");
+  t = t.replace(/(\s+NIL)+\s*$/g, "");
+  // Titre d'aérodrome ou de FIR collé en fin de bloc (ex. « LFJL METZ NANCY LORRAINE »)
+  t = t.replace(/\s+[LE][A-Z]{3}(?:\s+[A-Z][A-Z'\-]*)*(?:\s+-\s+[LE][A-Z]{3}(?:\s+[A-Z][A-Z'\-]*)*)*\s*$/, "");
+  return t.replace(/[ \t]{2,}/g, " ").trim();
+}
+
 /* Découpe un briefing collé en NOTAM individuels. */
 function decouperBriefing(texte) {
-  const T = (texte || "").replace(/\r/g, "");
+  const T = majSansAccent(texte).replace(/\r/g, "");
   const re = /(?:^|\n)[ \t]*((?:[A-Z]{4}-)?[A-Z]\d{4}\/\d{2})(?=\s)|\s([A-Z]{4}-[A-Z]\d{4}\/\d{2})(?=\s)/g;
   const debuts = [];
   let m;
@@ -897,11 +924,27 @@ function decouperBriefing(texte) {
     const bloc = T.slice(d, i + 1 < debuts.length ? debuts[i + 1] : T.length);
     const lignes = bloc.split("\n");
     while (lignes.length > 1) {
-      const l = sansAccent(lignes[lignes.length - 1].trim()).toUpperCase();
+      const l = lignes[lignes.length - 1].trim();
       if (l === "" || TITRE_SOFIA.test(l)) lignes.pop(); else break;
     }
-    return lignes.join("\n").trim();
+    return nettoyerBloc(lignes.join("\n").trim());
   });
+}
+
+/* Lit l'en-tête d'un PIB SOFIA : départ (UTC), durée, plafond, plancher. */
+function lireEntetePIB(texte) {
+  const T = majSansAccent(texte);
+  const res = {};
+  const dep = T.match(/DATE ET HEURE DE DEPART\s*\(UTC\)\s*(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+  if (dep) res.depart = Date.UTC(+dep[3], +dep[2] - 1, +dep[1], +dep[4], +dep[5]);
+  const dur = T.match(/DUREE\s*(?:\([^)]*\))?\s*(\d{1,2}):?(\d{2})\b/);
+  if (dur) res.dureeMin = +dur[1] * 60 + +dur[2];
+  const plaf = T.match(/PLAFOND\s*\(EN FL\)\s*(\d{1,3})/);
+  if (plaf) res.plafondFt = +plaf[1] * 100;
+  const dpt = T.match(/\bDEPART\s+([A-Z]{4})\b/), dst = T.match(/\bDESTINATION\s+([A-Z]{4})\b/);
+  if (dpt) res.de = dpt[1];
+  if (dst) res.vers = dst[1];
+  return res.depart ? res : null;
 }
 
 const IFR_SEUL_SUJETS = new Set(["PA", "PD", "PI", "PU", "PH", "PO", "PX", "PM", "IC", "ID", "IG", "II", "IL", "IM", "IN", "IO", "IS", "IT", "IU", "IW", "IX", "IY"]);
@@ -941,4 +984,4 @@ function trierBriefing(texte, depart, dureeMin, altMax) {
   return res;
 }
 
-if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, SUJETS, ETATS, FAMILLES, LEXIQUE };
+if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, lireEntetePIB, SUJETS, ETATS, FAMILLES, LEXIQUE };
