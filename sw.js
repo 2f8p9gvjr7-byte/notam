@@ -3,7 +3,7 @@
    ET APP_VERSION dans app.js. C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
 
-const VERSION = "1.7";
+const VERSION = "1.8";
 const CACHE = "qcode-v" + VERSION;
 
 const FICHIERS = [
