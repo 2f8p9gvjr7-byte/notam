@@ -2,9 +2,10 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.6";
 
 const $ = (s) => document.querySelector(s);
+document.getElementById("version").textContent = "Version " + APP_VERSION;
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /* ---------- Dates en heure de Paris ---------- */
@@ -59,7 +60,7 @@ $("#coller").addEventListener("click", async () => {
   try {
     const t = await navigator.clipboard.readText();
     if (t) { saisie.value = t; afficher(); }
-  } catch (e) { toast("Faites un appui long dans le champ puis « Coller »", 3500); saisie.focus(); }
+  } catch (e) { toast("Touchez la bulle « Coller » qui apparaît, ou appui long dans le champ → Coller", 4500); saisie.focus(); }
 });
 
 function ajusterChamp() {
@@ -82,12 +83,14 @@ function afficher() {
   if (estNotamComplet(v)) {
     const blocs = decouperBriefing(v);
     if (blocs.length > 1) {
-      zone.innerHTML = `<div class="statut-notam renvoi"><div class="gros">${blocs.length} NOTAM DANS CE TEXTE</div>
-        <div class="detail">L'onglet Décoder lit un seul NOTAM à la fois. Pour un briefing complet, utilisez le tri.</div>
-        <div class="actions" style="justify-content:center"><button id="versTrier">Trier ces ${blocs.length} NOTAM →</button></div></div>`;
-      $("#versTrier").addEventListener("click", () => {
-        tTexte.value = v; ouvrirOnglet("trier"); trier(); window.scrollTo(0, 0);
-      });
+      zone.innerHTML = "";
+      saisie.value = "";
+      try { localStorage.setItem("derniere", ""); } catch (e) {}
+      tTexte.value = v;
+      ouvrirOnglet("trier");
+      trier();
+      window.scrollTo(0, 0);
+      toast(`${blocs.length} NOTAM collés : je les trie pour vous`, 3000);
       return;
     }
     const un = blocs.length === 1 ? blocs[0] : v;
@@ -269,6 +272,13 @@ const RAISONS = {
 };
 
 function htmlNotamCourt(n, idx, raison) {
+  try { return htmlNotamCourtInterne(n, idx, raison); }
+  catch (e) {
+    return `<div class="notam" data-i="${idx}"><div class="titre">${esc(n.id || "NOTAM")} — non interprété, à lire vous-même</div>
+      <div class="extrait">${esc((n.texte || "").slice(0, 200))}</div><div class="plus">▾ Touchez pour lire le NOTAM en entier</div></div>`;
+  }
+}
+function htmlNotamCourtInterne(n, idx, raison) {
   const q = n.q && !n.q.erreur ? n.q : null;
   const f = q ? q.sujet[0] : "";
   const titre = q ? `${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt.charAt(0).toLowerCase() + q.etatTxt.slice(1) : ""}` : "Code non lu";
@@ -296,6 +306,7 @@ function htmlNotamCourt(n, idx, raison) {
 
 /* Détail déplié sur place, sans quitter la liste */
 function htmlDeplie(n) {
+  if (n.illisible) return `<div class="deplie"><div class="texte-e">${esc(n.texte)}</div><div class="liens"><button data-act="fermer">▴ Replier</button></div></div>`;
   const fin = n.perm || n.fin == null ? Infinity : n.fin;
   let h = `<div class="deplie"><dl>`;
   if (n.debut != null) h += `<dt>Validité (heure de Paris)</dt><dd>Du ${fDate(n.debut)} au ${fin === Infinity ? "permanent" : fDate(fin)}${n.estime ? " (estimée)" : ""}</dd>`;
@@ -335,6 +346,12 @@ function appliquerEntete(texte) {
 let listeTriee = [];
 let dernierTri = null;
 function trier() {
+  try { trierInterne(); }
+  catch (err) {
+    $("#tResultat").innerHTML = `<div class="erreur">Le tri n'a pas pu se faire (${esc(err && err.message || err)}).<br>Vérifiez en bas de l'écran que la version est bien ${APP_VERSION}, puis fermez et rouvrez l'appli.</div>`;
+  }
+}
+function trierInterne() {
   const zone = $("#tResultat");
   const texte = tTexte.value;
   if (texte.trim()) appliquerEntete(texte);
@@ -398,7 +415,7 @@ $("#tColler").addEventListener("click", async () => {
   try {
     const t = await navigator.clipboard.readText();
     if (t) { tTexte.value = t; trier(); }
-  } catch (e) { toast("Faites un appui long dans le champ puis « Coller »", 3500); tTexte.focus(); }
+  } catch (e) { toast("Touchez la bulle « Coller » qui apparaît, ou appui long dans le champ → Coller", 4500); tTexte.focus(); }
 });
 let positionTri = 0;
 $("#tResultat").addEventListener("click", (e) => {

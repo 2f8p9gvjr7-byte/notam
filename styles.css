@@ -181,3 +181,8 @@ h2.section { font-size: 15px; color: var(--orange); margin: 18px 0 8px; font-fam
 .notam .deplie .liens button { border: 1px solid var(--bord); background: var(--carte2); color: var(--texte); font-size: 13px; padding: 7px 12px; border-radius: 18px; }
 .btn-pdf { width: 100%; margin-top: 12px; border: 0; background: var(--orange); color: #1a1a1a; font-weight: 700; font-size: 16px; padding: 12px; border-radius: 12px; }
 .btn-pdf:disabled { opacity: .6; }
+
+html, body { overflow-x: hidden; }
+.reglages input, .reglages select { display: block; max-width: 100%; box-sizing: border-box; }
+.reglages input[type="datetime-local"] { min-height: 44px; text-align: left; }
+.texte-e, .extrait { overflow-wrap: anywhere; }

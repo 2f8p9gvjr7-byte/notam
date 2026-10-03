@@ -887,7 +887,7 @@ function plagesEntre(n, t1, t2) {
   return fusionner(res.map(([x, y]) => [Math.max(x, a), Math.min(y, b)]).filter(([x, y]) => y > x));
 }
 
-const TITRE_SOFIA = /^(?:(?:OBSTACLES|EN-ROUTE|NIL|AUTRES INFORMATIONS|RESTRICTIONS DE L.ESPACE AERIEN|ORGANISATION DE L.ESPACE AERIEN ET PROCEDURES|SERVICES DE LA CIRCULATION AERIENNE ET VOLMET|INSTALLATIONS DE COMMUNICATION ET DE SURVEILLANCE|GNSS - INSTALLATIONS DE RADIONAVIGATION|AVERTISSEMENTS A LA NAVIGATION|INSTALLATIONS ET SERVICES|AIRE DE MANOEUVRE|AIRE DE TRAFIC|BALISAGE|AIDES A L.ATTERRISSAGE.*|AERODROME (?:DE DEPART|D.ARRIVEE|DE DEGAGEMENT)|SELECTIONNER TOUS LES NOTAM.*|FAQ.*)\s*:?|(?:LF|LS|ED|EB|EL)[A-Z]{2}(?: [A-Z]{4})* [A-Z' \-]+)$/;
+const TITRE_SOFIA = /^(?:(?:OBSTACLES|EN-ROUTE|NIL|AUTRES INFORMATIONS|RESTRICTIONS DE L.ESPACE AERIEN|ORGANISATION DE L.ESPACE AERIEN ET PROCEDURES|SERVICES DE LA CIRCULATION AERIENNE ET VOLMET|INSTALLATIONS DE COMMUNICATION ET DE SURVEILLANCE|GNSS - INSTALLATIONS DE RADIONAVIGATION|AVERTISSEMENTS A LA NAVIGATION|INSTALLATIONS ET SERVICES|AIRE DE MANOEUVRE|AIRE DE TRAFIC|BALISAGE|AIDES A L.ATTERRISSAGE.*|AERODROME (?:DE DEPART|D.ARRIVEE|DE DEGAGEMENT)|SELECTIONNER TOUS LES NOTAM.*|FAQ.*|.*©.*|.*MENTIONS LEGALES.*|SIA \| DGAC.*|VERSION \d.*)\s*:?|(?:LF|LS|ED|EB|EL)[A-Z]{2}(?: [A-Z]{4})* [A-Z' \-]+)$/;
 
 /* Majuscules sans accents (les NOTAM sont en majuscules, les titres SOFIA non). */
 function majSansAccent(t) {
@@ -949,13 +949,16 @@ function decouperBriefing(texte) {
 function lireEntetePIB(texte) {
   const T = majSansAccent(texte);
   const res = {};
-  const dep = T.match(/DATE ET HEURE DE DEPART\s*\(UTC\)\s*(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+  // Le menu de SOFIA peut s'intercaler entre l'intitulé et la valeur : on tolère du texte sans chiffres entre les deux.
+  const dep = T.match(/DATE ET HEURE DE DEPART\s*\(UTC\)[^\d]{0,120}?(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
   if (dep) res.depart = Date.UTC(+dep[3], +dep[2] - 1, +dep[1], +dep[4], +dep[5]);
-  const dur = T.match(/DUREE\s*(?:\([^)]*\))?\s*(\d{1,2}):?(\d{2})\b/);
+  const dur = T.match(/\bDUREE\b[^\d]{0,120}?(\d{1,2}):?(\d{2})\b/);
   if (dur) res.dureeMin = +dur[1] * 60 + +dur[2];
-  const plaf = T.match(/PLAFOND\s*\(EN FL\)\s*(\d{1,3})/);
+  const plaf = T.match(/PLAFOND\s*\(EN FL\)[^\d]{0,120}?(\d{1,3})\b/);
   if (plaf) res.plafondFt = +plaf[1] * 100;
-  const dpt = T.match(/\bDEPART\s+([A-Z]{4})\b/), dst = T.match(/\bDESTINATION\s+([A-Z]{4})\b/);
+  const OACI = "((?:LF|LS|ED|EB|EL|EG|LE|LI)[A-Z]{2})";
+  const dpt = T.match(new RegExp("\\bDEPART\\b(?!\\s*\\(|\\s*:)[^\\d]{0,120}?\\b" + OACI + "\\b"));
+  const dst = T.match(new RegExp("\\bDESTINATION\\b[^\\d]{0,120}?\\b" + OACI + "\\b"));
   if (dpt) res.de = dpt[1];
   if (dst) res.vers = dst[1];
   return res.depart ? res : null;
@@ -970,7 +973,9 @@ function trierBriefing(texte, depart, dureeMin, altMax) {
   const blocs = decouperBriefing(texte);
   const res = { total: blocs.length, garder: [], ecarter: { tt: [], creneau: [], altitude: [], ifr: [], admin: [], checklist: [] } };
   for (const bloc of blocs) {
-    const n = lireChamps(bloc);
+    let n;
+    try { n = lireChamps(bloc); }
+    catch (e) { res.garder.push({ texte: bloc, champs: { E: bloc }, id: (bloc.match(/\S+/) || [""])[0], pendantVol: null, illisible: true }); continue; }
     n.texte = bloc;
     const q = n.q && !n.q.erreur ? n.q : null;
     const E = n.champs.E || "";
