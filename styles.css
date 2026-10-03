@@ -188,4 +188,10 @@ html, body { overflow-x: hidden; }
 .texte-e, .extrait { overflow-wrap: anywhere; }
 
 .actions { flex-wrap: wrap; }
-.bouton-lien { display: inline-flex; align-items: center; border: 1px solid var(--orange); background: rgba(245,166,35,.12); color: var(--orange); font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 20px; text-decoration: none; margin-right: auto; }
+.bouton-lien { display: inline-flex; align-items: center; border: 1px solid var(--orange); background: rgba(245,166,35,.12); color: var(--orange); font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 20px; text-decoration: none; }
+
+.coche { display: inline-flex; align-items: center; margin-right: 8px; padding: 4px; cursor: pointer; }
+.coche input { width: 22px; height: 22px; accent-color: var(--orange); margin: 0; }
+.notam .haut { justify-content: flex-start; }
+.notam .haut .ou { margin-left: auto; }
+.notam.decoche { opacity: .55; }

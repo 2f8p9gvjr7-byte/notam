@@ -2,10 +2,11 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.8";
+const APP_VERSION = "1.9";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
+let jsPDFpret = null; // déclaré ici : le tri peut être lancé dès le démarrage
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 /* ---------- Dates en heure de Paris ---------- */
@@ -274,7 +275,7 @@ const RAISONS = {
 function htmlNotamCourt(n, idx, raison) {
   try { return htmlNotamCourtInterne(n, idx, raison); }
   catch (e) {
-    return `<div class="notam" data-i="${idx}"><div class="titre">${esc(n.id || "NOTAM")} — non interprété, à lire vous-même</div>
+    return `<div class="notam${estCoche(n) ? "" : " decoche"}" data-i="${idx}"><div class="haut"><label class="coche"><input type="checkbox" data-coche ${estCoche(n) ? "checked" : ""}></label></div><div class="titre">${esc(n.id || "NOTAM")} — non interprété, à lire vous-même</div>
       <div class="extrait">${esc((n.texte || "").slice(0, 200))}</div><div class="plus">▾ Touchez pour lire le NOTAM en entier</div></div>`;
   }
 }
@@ -292,8 +293,8 @@ function htmlNotamCourtInterne(n, idx, raison) {
   }
   const lim = n.champs.F || n.champs.G ? `${n.champs.F || "?"} → ${n.champs.G || "?"}` : "";
   const extrait = (n.champs.E || "").replace(/\s+/g, " ").slice(0, 160);
-  return `<div class="notam f-${f}" data-i="${idx}">
-    <div class="haut"><span class="qc">${q ? `Q<span class="s">${q.sujet}</span><span class="e">${q.etat}</span>` : "—"}</span>
+  return `<div class="notam f-${f}${estCoche(n) ? "" : " decoche"}" data-i="${idx}">
+    <div class="haut"><label class="coche" aria-label="Inclure dans le PDF"><input type="checkbox" data-coche ${estCoche(n) ? "checked" : ""}></label><span class="qc">${q ? `Q<span class="s">${q.sujet}</span><span class="e">${q.etat}</span>` : "—"}</span>
       <span class="ou">${esc(n.id || "")}${n.champs.A ? " · " + esc(n.champs.A.split(/\s+/)[0]) : ""}</span></div>
     <div class="titre">${esc(titre)}</div>
     ${quand ? `<div class="quand">${quand}</div>` : ""}
@@ -345,6 +346,29 @@ function appliquerEntete(texte) {
 
 let listeTriee = [];
 let dernierTri = null;
+
+/* Cases à cocher : par défaut « À lire » = coché, écartés = décoché ; l'utilisateur peut changer. */
+let choix = {};          // id du NOTAM → true / false (choix manuel)
+let choixSig = "";       // briefing auquel ces choix se rapportent
+const cleNotam = (n) => n.id || (n.texte || "").slice(0, 80);
+const estCoche = (n) => (cleNotam(n) in choix ? choix[cleNotam(n)] : n.groupe === "garder");
+function chargerChoix(texte) {
+  const sig = texte.length + ":" + texte.slice(0, 200);
+  if (sig === choixSig) return;
+  choixSig = sig; choix = {};
+  try {
+    const c = JSON.parse(localStorage.getItem("tChoix") || "null");
+    if (c && c.sig === sig) choix = c.choix || {};
+  } catch (e) {}
+}
+function sauverChoix() { try { localStorage.setItem("tChoix", JSON.stringify({ sig: choixSig, choix })); } catch (e) {} }
+function majCompteur() {
+  const nb = listeTriee.filter(estCoche).length;
+  const b = $("#btnPdf");
+  if (b && !b.disabled) b.textContent = `📄 PDF des NOTAM cochés (${nb})`;
+  const c = $("#nbCoches");
+  if (c) c.textContent = nb;
+}
 function trier() {
   try { trierInterne(); }
   catch (err) {
@@ -372,6 +396,9 @@ function trierInterne() {
     return;
   }
   trier.t1 = dep; trier.t2 = dep + dur * 60000;
+  chargerChoix(texte);
+  r.garder.forEach((n) => { n.groupe = "garder"; });
+  for (const [cle, arr] of Object.entries(r.ecarter)) arr.forEach((n) => { n.groupe = cle; });
   listeTriee = [];
   const ajouter = (n, raison) => { listeTriee.push(n); return htmlNotamCourt(n, listeTriee.length - 1, raison); };
   const nbEcartes = r.total - r.garder.length;
@@ -380,7 +407,8 @@ function trierInterne() {
     <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
     ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
-    <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM à lire</button>
+    <div class="creneau">Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</div>
+    <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM cochés</button>
   </div>`;
   dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete };
   chargerJsPDF();
@@ -404,6 +432,7 @@ function trierInterne() {
   }
   html += `<p class="note">Le tri est une aide : en cas de doute, un NOTAM reste dans « À lire ». Les limites d'altitude du tri viennent de la ligne Q) et sont approximatives. Touchez un NOTAM pour le détail.</p>`;
   zone.innerHTML = html;
+  majCompteur();
 }
 
 [tDep, tDur, tAlt].forEach((el) => el.addEventListener("change", trier));
@@ -419,7 +448,7 @@ $("#tColler").addEventListener("click", async () => {
 });
 let positionTri = 0;
 $("#tResultat").addEventListener("click", (e) => {
-  if (e.target.closest("#btnPdf")) return;
+  if (e.target.closest("#btnPdf") || e.target.closest(".coche")) return;
   const abr = e.target.closest(".abr");
   if (abr) { toast(`${abr.dataset.k} : ${LEXIQUE[abr.dataset.k]}`, 3500); return; }
   const c = e.target.closest(".notam");
@@ -446,6 +475,18 @@ $("#tResultat").addEventListener("click", (e) => {
   c.insertAdjacentHTML("beforeend", htmlDeplie(n));
 });
 
+$("#tResultat").addEventListener("change", (e) => {
+  const cb = e.target.closest("[data-coche]");
+  if (!cb) return;
+  const c = cb.closest(".notam");
+  const n = listeTriee[+c.dataset.i];
+  if (!n) return;
+  choix[cleNotam(n)] = cb.checked;
+  c.classList.toggle("decoche", !cb.checked);
+  sauverChoix();
+  majCompteur();
+});
+
 /* Retour au tri depuis l'analyse complète */
 $("#btnRetour").addEventListener("click", () => {
   $("#retour").hidden = true;
@@ -466,7 +507,6 @@ if (!tDep.value) tDep.value = valeurLocale(Math.floor(Date.now() / 300000) * 300
 trier();
 
 /* ---------- PDF des NOTAM à lire (hors connexion, via jsPDF) ---------- */
-let jsPDFpret = null;
 function chargerJsPDF() {
   if (jsPDFpret) return jsPDFpret;
   jsPDFpret = new Promise((ok, ko) => {
@@ -509,19 +549,26 @@ function construirePDF() {
   y += 1;
   ecrire(`Vol : ${DATEH(t1)} -> ${DATEH(t2)}`, { taille: 10 });
   ecrire(`Altitude maximale : ${alt.toLocaleString("fr-FR")} ft   ·   Heures en heure de Paris`, { taille: 10 });
-  const nbE = r.total - r.garder.length;
-  ecrire(`${r.garder.length} NOTAM à lire · ${nbE} écarté${nbE > 1 ? "s" : ""} sur ${r.total}   ·   Édité le ${fDate(Date.now())}`, { taille: 10, couleur: [90, 90, 90] });
+  const retenus = listeTriee.filter(estCoche);
+  const nonRetenus = listeTriee.filter((n) => !estCoche(n));
+  ecrire(`${retenus.length} NOTAM retenus · ${nonRetenus.length} non retenus sur ${r.total}   ·   Édité le ${fDate(Date.now())}`, { taille: 10, couleur: [90, 90, 90] });
   trait([245, 166, 35]);
 
-  // NOTAM à lire
-  ecrire("NOTAM À LIRE", { taille: 13, gras: true, couleur: [200, 120, 0] });
+  // NOTAM retenus (cochés)
+  ecrire("NOTAM RETENUS", { taille: 13, gras: true, couleur: [200, 120, 0] });
   y += 1;
-  if (!r.garder.length) ecrire("Aucun NOTAM ne concerne ce créneau.", { taille: 10 });
-  r.garder.forEach((n, i) => {
+  if (!retenus.length) ecrire("Aucun NOTAM coché.", { taille: 10 });
+  retenus.forEach((n, i) => {
+    if (n.illisible) {
+      ecrire(`${i + 1}. ${n.id || "NOTAM"} — non interprété, texte brut :`, { taille: 11, gras: true });
+      ecrire(n.texte, { taille: 9, police: "courier", retrait: 3, interligne: 1.3 });
+      trait(); return;
+    }
     const q = n.q && !n.q.erreur ? n.q : null;
     place(18);
     ecrire(`${i + 1}. ${n.id || "NOTAM"}   ·   ${n.champs.A || ""}   ·   ${q ? q.code : ""}`, { taille: 11, gras: true });
     if (q) ecrire(`${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt : ""}`, { taille: 10, gras: true, couleur: [60, 60, 60] });
+    if (n.groupe !== "garder") ecrire(`Ajouté manuellement (tri : ${RAISONS[n.groupe] || "écarté"})`, { taille: 9, couleur: [90, 90, 90] });
     if (n.pendantVol === null) ecrire("Dates non trouvées : à vérifier", { taille: 9.5, couleur: [180, 0, 0] });
     else if (n.pendantVol && n.pendantVol.length) {
       const tout = n.pendantVol.length === 1 && n.pendantVol[0][0] <= t1 && n.pendantVol[0][1] >= t2;
@@ -535,14 +582,16 @@ function construirePDF() {
     trait();
   });
 
-  // Écartés (liste courte, pour mémoire)
-  const groupes = Object.entries(r.ecarter).filter(([, a]) => a.length);
+  // Non retenus (liste courte, pour mémoire)
+  const parGroupe = {};
+  nonRetenus.forEach((n) => { (parGroupe[n.groupe] = parGroupe[n.groupe] || []).push(n); });
+  const groupes = Object.entries(parGroupe);
   if (groupes.length) {
     y += 2;
-    ecrire("NOTAM ÉCARTÉS (pour mémoire)", { taille: 12, gras: true, couleur: [90, 90, 90] });
+    ecrire("NOTAM NON RETENUS (pour mémoire)", { taille: 12, gras: true, couleur: [90, 90, 90] });
     for (const [cle, arr] of groupes) {
       y += 1;
-      ecrire(`${RAISONS[cle]} (${arr.length})`, { taille: 10, gras: true, couleur: [90, 90, 90] });
+      ecrire(`${cle === "garder" ? "Décochés manuellement" : RAISONS[cle]} (${arr.length})`, { taille: 10, gras: true, couleur: [90, 90, 90] });
       arr.forEach((n) => {
         const q = n.q && !n.q.erreur ? n.q : null;
         ecrire(`• ${n.id || ""} · ${n.champs.A || ""} · ${q ? q.code + " " + q.sujetTxt : ""}`, { taille: 9, couleur: [90, 90, 90], retrait: 3 });
@@ -585,7 +634,7 @@ $("#tResultat").addEventListener("click", async (e) => {
   } catch (err) {
     toast("Impossible de créer le PDF", 3500);
   } finally {
-    b.disabled = false; b.textContent = "📄 PDF des NOTAM à lire";
+    b.disabled = false; majCompteur();
   }
 });
 
