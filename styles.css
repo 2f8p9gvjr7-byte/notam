@@ -195,3 +195,24 @@ html, body { overflow-x: hidden; }
 .notam .haut { justify-content: flex-start; }
 .notam .haut .ou { margin-left: auto; }
 .notam.decoche { opacity: .55; }
+
+.btn-lire { width: 100%; margin-top: 12px; border: 2px solid var(--orange); background: transparent; color: var(--orange); font-weight: 700; font-size: 16px; padding: 11px; border-radius: 12px; }
+.btn-lire + .btn-pdf { margin-top: 8px; }
+.lecture { position: fixed; inset: 0; z-index: 20; background: var(--fond); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 0 16px calc(env(safe-area-inset-bottom) + 24px); }
+.lecture-haut { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; background: var(--fond);
+  padding: calc(env(safe-area-inset-top) + 10px) 0 10px; max-width: 640px; margin: 0 auto; }
+.lecture-haut button { flex: 1; border: 2px solid var(--orange); background: rgba(245,166,35,.14); color: var(--orange); font-weight: 700; font-size: 16px; padding: 11px; border-radius: 12px; }
+.lecture-haut button:last-child { flex: 0 0 auto; background: var(--orange); color: #1a1a1a; }
+#lectureContenu { max-width: 640px; margin: 0 auto; }
+.lecture h2 { font-family: var(--mono); color: var(--orange); font-size: 18px; margin: 8px 0 4px; }
+.lecture .entete { color: var(--doux); font-size: 14px; margin-bottom: 14px; }
+.lect { background: var(--carte); border: 1px solid var(--bord); border-left: 4px solid var(--bord); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.lect.f-R, .lect.f-W { border-left-color: var(--orange); }
+.lect.f-A { border-left-color: var(--bleu); }
+.lect .n { font-family: var(--mono); font-size: 13px; color: var(--doux); }
+.lect .t { font-weight: 700; font-size: 17px; margin: 2px 0; }
+.lect .quand { color: var(--orange); font-size: 14px; font-weight: 600; }
+.lect .info { font-size: 14px; margin-top: 4px; }
+.lect .info span { color: var(--doux); }
+.lect .texte-e { margin-top: 8px; font-size: 14px; }

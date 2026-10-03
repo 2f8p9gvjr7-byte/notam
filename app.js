@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "1.9";
+const APP_VERSION = "2.0";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -368,6 +368,8 @@ function majCompteur() {
   if (b && !b.disabled) b.textContent = `📄 PDF des NOTAM cochés (${nb})`;
   const c = $("#nbCoches");
   if (c) c.textContent = nb;
+  const l = $("#btnLire");
+  if (l) l.textContent = `📖 Lire à l'écran (${nb})`;
 }
 function trier() {
   try { trierInterne(); }
@@ -408,6 +410,7 @@ function trierInterne() {
     ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
     <div class="creneau">Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</div>
+    <button id="btnLire" class="btn-lire">📖 Lire à l'écran</button>
     <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM cochés</button>
   </div>`;
   dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete };
@@ -449,6 +452,7 @@ $("#tColler").addEventListener("click", async () => {
 let positionTri = 0;
 $("#tResultat").addEventListener("click", (e) => {
   if (e.target.closest("#btnPdf") || e.target.closest(".coche")) return;
+  if (e.target.closest("#btnLire")) { ouvrirLecture(); return; }
   const abr = e.target.closest(".abr");
   if (abr) { toast(`${abr.dataset.k} : ${LEXIQUE[abr.dataset.k]}`, 3500); return; }
   const c = e.target.closest(".notam");
@@ -485,6 +489,57 @@ $("#tResultat").addEventListener("change", (e) => {
   c.classList.toggle("decoche", !cb.checked);
   sauverChoix();
   majCompteur();
+});
+
+/* ---------- Lecture à l'écran des NOTAM cochés ---------- */
+function htmlLecture() {
+  const { t1, t2, alt, entete: en } = dernierTri;
+  const retenus = listeTriee.filter(estCoche);
+  let h = `<h2>NOTAM retenus (${retenus.length})</h2>
+    <div class="entete">${en && (en.de || en.vers) ? esc((en.de || "") + " → " + (en.vers || "")) + " · " : ""}vol du ${fJour(t1)} · ${fHeure(t1)} → ${fHeure(t2)} (heure de Paris) · jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>`;
+  if (!retenus.length) return h + `<p class="note">Aucun NOTAM coché.</p>`;
+  retenus.forEach((n, i) => {
+    const q = n.q && !n.q.erreur ? n.q : null;
+    const f = q ? q.sujet[0] : "";
+    let quand = "";
+    if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
+    else if (n.pendantVol && n.pendantVol.length) {
+      const tout = n.pendantVol.length === 1 && n.pendantVol[0][0] <= t1 && n.pendantVol[0][1] >= t2;
+      quand = tout ? "En vigueur pendant tout le vol" : "En vigueur " + n.pendantVol.map(([a, b]) => `${fHeure(a)} → ${fHeure(b)}`).join(", ");
+    }
+    const fin = n.perm || n.fin == null ? Infinity : n.fin;
+    h += `<div class="lect f-${f}">
+      <div class="n">${i + 1}. ${esc(n.id || "NOTAM")}${n.champs && n.champs.A ? " · " + esc(n.champs.A) : ""}${q ? " · " + q.code : ""}</div>
+      ${q ? `<div class="t">${esc(q.sujetTxt)}${q.etatTxt ? " — " + esc(q.etatTxt.charAt(0).toLowerCase() + q.etatTxt.slice(1)) : ""}</div>` : ""}
+      ${n.groupe && n.groupe !== "garder" ? `<div class="info"><span>Ajouté manuellement</span></div>` : ""}
+      ${quand ? `<div class="quand">${quand}</div>` : ""}
+      ${!n.illisible && n.debut != null ? `<div class="info"><span>Validité :</span> du ${fDate(n.debut)} au ${fin === Infinity ? "permanent" : fDate(fin)}</div>` : ""}
+      ${!n.illisible && n.champs.D ? `<div class="info"><span>Horaires (UTC) :</span> ${esc(n.champs.D)}</div>` : ""}
+      ${!n.illisible && (n.champs.F || n.champs.G) ? `<div class="info"><span>Limites :</span> ${esc(n.champs.F || "?")} → ${esc(n.champs.G || "?")}</div>` : ""}
+      <div class="texte-e">${n.illisible ? esc(n.texte) : surligner(n.champs.E || "").html}</div>
+    </div>`;
+  });
+  return h;
+}
+let positionAvantLecture = 0;
+function ouvrirLecture() {
+  if (!dernierTri) return;
+  positionAvantLecture = window.scrollY;
+  $("#lectureContenu").innerHTML = htmlLecture();
+  $("#lecture").hidden = false;
+  $("#lecture").scrollTop = 0;
+  document.body.style.overflow = "hidden";
+}
+function fermerLecture() {
+  $("#lecture").hidden = true;
+  document.body.style.overflow = "";
+  window.scrollTo(0, positionAvantLecture);
+}
+$("#lectureRetour").addEventListener("click", fermerLecture);
+$("#lecturePdf").addEventListener("click", () => { const b = $("#btnPdf"); if (b) b.click(); });
+$("#lectureContenu").addEventListener("click", (e) => {
+  const abr = e.target.closest(".abr");
+  if (abr) toast(`${abr.dataset.k} : ${LEXIQUE[abr.dataset.k]}`, 3500);
 });
 
 /* Retour au tri depuis l'analyse complète */
