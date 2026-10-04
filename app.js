@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "2.1";
+const APP_VERSION = "2.2";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -746,7 +746,8 @@ $("#version").textContent = "Version " + APP_VERSION;
 function majStatut() {
   const st = $("#statut");
   st.classList.toggle("horsligne", !navigator.onLine);
-  st.textContent = navigator.onLine ? "● en ligne" : "● hors ligne";
+  st.textContent = "●";
+  st.title = navigator.onLine ? "En ligne" : "Hors ligne";
 }
 window.addEventListener("online", majStatut);
 window.addEventListener("offline", majStatut);
