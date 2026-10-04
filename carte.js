@@ -544,6 +544,8 @@
 
   /* Mode « modifier la route » : toucher la carte ajoute un point, glisser déplace, toucher un point le supprime */
   let editionRoute = false;
+  let rayonLocal = 20;
+  try { rayonLocal = +localStorage.getItem("cRayonLocal") || 20; } catch (e) {}
   function basculerEdition() {
     editionRoute = !editionRoute;
     const b = $("#ofmEditer");
@@ -556,6 +558,7 @@
     const { pts } = routePoints();
     const toks = routeJetons();
     const tok = fmtCoord(latlng.lat, latlng.lng);
+    if (pts.length === 1) { toks.push(tok, toks[pts[0].jeton]); ecrireJetons(toks); dessinerOFM(); return; } // vol local : circuit qui revient au terrain
     if (pts.length < 2) { toks.push(tok); ecrireJetons(toks); dessinerOFM(); return; }
     // insertion dans la branche la plus proche du point touché
     const P = ofm.latLngToLayerPoint(latlng);
@@ -602,6 +605,26 @@
       }
       bornes.push([p.lat, p.lon]);
     });
+    // Vol local : un seul terrain (ex. « LFGY » ou « LFGY LFGY ») → cercle de rayon réglable autour
+    const local = pts.every((p) => distCap(pts[0], p).nm < 0.5);
+    if (local) {
+      const c0 = pts[0], rm = rayonLocal * 1852;
+      const cercle = L.circle([c0.lat, c0.lon], { radius: rm, color: "#d81b60", weight: 3, dashArray: "10 8", fill: true, fillOpacity: 0.04, interactive: false }).addTo(ofmCouche);
+      const b = cercle.getBounds();
+      bornes.push([b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]);
+      const dedans = items.filter((it) => it.forme && it.forme.geo && it.forme.geo.some((g) => distCap(c0, g).nm <= rayonLocal + (it.forme.type === "cercle" ? it.forme.r : 0)));
+      const opts = [5, 10, 15, 20, 25, 30, 40, 50].map((v) => `<option value="${v}"${v === rayonLocal ? " selected" : ""}>${v} NM</option>`).join("");
+      info.innerHTML = `<b>Vol local ${esc(c0.nom)}</b> · rayon <select id="ofmRayon" class="ofm-rayon">${opts}</select> · `
+        + (dedans.length ? `<b>${dedans.length}</b> NOTAM dans la zone : n° ${dedans.map((i) => i.num).join(", ")}` : "aucun NOTAM coché dans la zone")
+        + ` <small>· pour un circuit, ✎ puis touchez la carte</small>`
+        + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
+      $("#ofmRayon").addEventListener("change", (e) => {
+        rayonLocal = +e.target.value;
+        try { localStorage.setItem("cRayonLocal", String(rayonLocal)); } catch (err) {}
+        dejaCadre = false; dessinerOFM();
+      });
+      return;
+    }
     let total = 0;
     const branches = [];
     for (let i = 1; i < pts.length; i++) {
