@@ -605,24 +605,32 @@
       }
       bornes.push([p.lat, p.lon]);
     });
-    // Vol local : un seul terrain (ex. « LFGY » ou « LFGY LFGY ») → cercle de rayon réglable autour
-    const local = pts.every((p) => distCap(pts[0], p).nm < 0.5);
-    if (local) {
+    // Vol local : un seul terrain (« LFGY », « LFGY LFGY ») ou circuit qui revient au terrain de départ
+    const surPlace = pts.every((p) => distCap(pts[0], p).nm < 0.5);
+    const circuit = !surPlace && pts.length > 2 && distCap(pts[0], pts[pts.length - 1]).nm < 0.5;
+    let ligneLocal = "";
+    if (surPlace || circuit) {
       const c0 = pts[0], rm = rayonLocal * 1852;
       const cercle = L.circle([c0.lat, c0.lon], { radius: rm, color: "#d81b60", weight: 3, dashArray: "10 8", fill: true, fillOpacity: 0.04, interactive: false }).addTo(ofmCouche);
       const b = cercle.getBounds();
       bornes.push([b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]);
       const dedans = items.filter((it) => it.forme && it.forme.geo && it.forme.geo.some((g) => distCap(c0, g).nm <= rayonLocal + (it.forme.type === "cercle" ? it.forme.r : 0)));
       const opts = [5, 10, 15, 20, 25, 30, 40, 50].map((v) => `<option value="${v}"${v === rayonLocal ? " selected" : ""}>${v} NM</option>`).join("");
-      info.innerHTML = `<b>Vol local ${esc(c0.nom)}</b> · rayon <select id="ofmRayon" class="ofm-rayon">${opts}</select> · `
-        + (dedans.length ? `<b>${dedans.length}</b> NOTAM dans la zone : n° ${dedans.map((i) => i.num).join(", ")}` : "aucun NOTAM coché dans la zone")
-        + ` <small>· pour un circuit, ✎ puis touchez la carte</small>`
-        + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
-      $("#ofmRayon").addEventListener("change", (e) => {
+      ligneLocal = `<b>Vol local ${esc(c0.nom)}</b> · rayon <select id="ofmRayon" class="ofm-rayon">${opts}</select> · `
+        + (dedans.length ? `<b>${dedans.length}</b> NOTAM dans la zone : n° ${dedans.map((i) => i.num).join(", ")}` : "aucun NOTAM coché dans la zone");
+    }
+    const brancherRayon = () => {
+      const sel = $("#ofmRayon");
+      if (sel) sel.addEventListener("change", (e) => {
         rayonLocal = +e.target.value;
         try { localStorage.setItem("cRayonLocal", String(rayonLocal)); } catch (err) {}
         dejaCadre = false; dessinerOFM();
       });
+    };
+    if (surPlace) {
+      info.innerHTML = ligneLocal + ` <small>· pour un circuit, ✎ puis touchez la carte</small>`
+        + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
+      brancherRayon();
       return;
     }
     let total = 0;
@@ -633,7 +641,9 @@
       branches.push(`${esc(pts[i - 1].nom)}→${esc(pts[i].nom)} ${String(Math.round(dc.cap)).padStart(3, "0")}° ${Math.round(dc.nm)} NM`);
     }
     info.innerHTML = (branches.length ? branches.join(" · ") + (branches.length > 1 ? ` · total ${Math.round(total)} NM` : "") + " <small>(routes vraies, sans déclinaison)</small>" : "")
-      + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
+      + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "")
+      + (ligneLocal ? `<div class="ligne-local">${ligneLocal}</div>` : "");
+    brancherRayon();
   }
 
   function popupHTML(it) {

@@ -256,7 +256,7 @@ h1 { white-space: nowrap; }
 #ofmCadrer { color: var(--orange); }
 
 .route-ligne { display: flex; gap: 6px; margin-bottom: 6px; }
-.route-ligne input { flex: 1; min-width: 0; font: 15px var(--mono); text-transform: uppercase; background: var(--carte); color: var(--texte); border: 2px solid var(--bord); border-radius: 10px; padding: 9px 10px; }
+.route-ligne input { flex: 1; min-width: 0; font: 16px var(--mono); text-transform: uppercase; background: var(--carte); color: var(--texte); border: 2px solid var(--bord); border-radius: 10px; padding: 9px 10px; }
 .route-ligne input:focus { border-color: var(--orange); outline: none; }
 .route-ligne button { border: 0; background: #d81b60; color: #fff; font-weight: 700; font-size: 14px; padding: 0 14px; border-radius: 10px; }
 .route-info { font-family: var(--mono); font-size: 12.5px; color: var(--texte); margin: 0 0 8px; }
@@ -292,4 +292,5 @@ h1 { white-space: nowrap; }
 #ofmBloc.plein .ofm-quitter { white-space: nowrap; }
 
 /* Vol local : choix du rayon */
-.ofm-rayon { background:#16213a; color:#f5a623; border:1px solid #2a3a5c; border-radius:6px; padding:2px 4px; font:inherit; }
+.ofm-rayon { background:#16213a; color:#f5a623; border:1px solid #2a3a5c; border-radius:6px; padding:2px 4px; font: 16px var(--mono); }
+.ligne-local { margin-top: 4px; }
