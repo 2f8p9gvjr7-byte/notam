@@ -37,6 +37,8 @@
       });
     } catch (e) { return null; }
   }
+  let rayonLocal = 20;
+  try { rayonLocal = +localStorage.getItem("cRayonLocal") || 20; } catch (e) {}
   function sauverCal() { try { localStorage.setItem("cCal", JSON.stringify(cal)); } catch (e) {} }
   function lireCal() { try { return JSON.parse(localStorage.getItem("cCal") || "null"); } catch (e) { return null; } }
 
@@ -143,6 +145,58 @@
     });
   }
 
+
+  /* ---------- Route tapée dans l'onglet Carte, reportée sur la capture ---------- */
+  function routeCapture() {
+    if (!cal) return null;
+    const { pts } = routePoints();
+    if (!pts.length) return null;
+    const surPlace = pts.every((p) => distCap(pts[0], p).nm < 0.5);
+    const boucle = surPlace || (pts.length > 2 && distCap(pts[0], pts[pts.length - 1]).nm < 0.5);
+    const px = (surPlace ? [pts[0]] : pts).map((p) => Object.assign(proj(p.lat, p.lon), { nom: p.nom }));
+    const cercle = boucle ? { x: px[0].x, y: px[0].y, r: rayonLocal * pxParNM(pts[0].lat) } : null;
+    let txt = "";
+    if (surPlace) txt = `Vol local ${pts[0].nom} — rayon ${rayonLocal} NM`;
+    else {
+      const br = [];
+      let tot = 0;
+      for (let i = 1; i < pts.length; i++) { const d = distCap(pts[i - 1], pts[i]); tot += d.nm; br.push(`${pts[i - 1].nom}→${pts[i].nom} ${String(Math.round(d.cap)).padStart(3, "0")}° ${Math.round(d.nm)} NM`); }
+      txt = "Route : " + br.join(" · ") + (br.length > 1 ? ` · total ${Math.round(tot)} NM` : "") + (boucle ? ` — rayon local ${rayonLocal} NM` : "");
+    }
+    return { px, cercle, txt };
+  }
+  const ROSE = "#d81b60";
+  function routeSVG(svg, T) {
+    const r = routeCapture();
+    if (!r) return;
+    const g = el("g", { "pointer-events": "none" }, svg);
+    if (r.cercle) el("circle", { cx: r.cercle.x, cy: r.cercle.y, r: r.cercle.r, fill: ROSE, "fill-opacity": 0.05, stroke: ROSE, "stroke-width": T.trait, "stroke-dasharray": `${T.trait * 4} ${T.trait * 3}` }, g);
+    if (r.px.length > 1) el("polyline", { points: r.px.map((q) => `${q.x},${q.y}`).join(" "), fill: "none", stroke: ROSE, "stroke-width": T.trait * 1.3, "stroke-linejoin": "round", opacity: 0.9 }, g);
+    r.px.forEach((q) => {
+      el("circle", { cx: q.x, cy: q.y, r: T.croix * 0.55, fill: ROSE, stroke: "#fff", "stroke-width": T.trait * 0.6 }, g);
+      const t = el("text", { x: q.x + T.croix * 0.9, y: q.y - T.croix * 0.6, "font-size": T.police * 0.9, "font-weight": "700", "font-family": "Helvetica, Arial, sans-serif", fill: ROSE, stroke: "#fff", "stroke-width": T.trait * 0.8, "paint-order": "stroke" }, g);
+      t.textContent = q.nom;
+    });
+  }
+  function routeCanvas(ctx, T) {
+    const r = routeCapture();
+    if (!r) return null;
+    ctx.save();
+    ctx.strokeStyle = ROSE; ctx.fillStyle = ROSE;
+    if (r.cercle) {
+      ctx.lineWidth = T.trait; ctx.setLineDash([T.trait * 4, T.trait * 3]);
+      ctx.beginPath(); ctx.arc(r.cercle.x, r.cercle.y, r.cercle.r, 0, 2 * Math.PI); ctx.stroke();
+      ctx.globalAlpha = 0.05; ctx.fill(); ctx.globalAlpha = 1; ctx.setLineDash([]);
+    }
+    if (r.px.length > 1) { ctx.lineWidth = T.trait * 1.3; ctx.lineJoin = "round"; ctx.globalAlpha = 0.9; ctx.beginPath(); r.px.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.font = `bold ${T.police * 0.9}px Helvetica, Arial, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    r.px.forEach((q) => {
+      ctx.beginPath(); ctx.arc(q.x, q.y, T.croix * 0.55, 0, 2 * Math.PI); ctx.fillStyle = ROSE; ctx.fill(); ctx.lineWidth = T.trait * 0.6; ctx.strokeStyle = "#fff"; ctx.stroke();
+      ctx.lineWidth = T.trait * 0.8; ctx.strokeText(q.nom, q.x + T.croix * 0.9, q.y - T.croix * 0.6); ctx.fillStyle = ROSE; ctx.fillText(q.nom, q.x + T.croix * 0.9, q.y - T.croix * 0.6);
+    });
+    ctx.restore();
+    return r.txt;
+  }
   /* ---------- Dessin à l'écran (SVG) ---------- */
   function tailles() {
     const base = Math.max(nat.w, nat.h) / 100;
@@ -168,6 +222,7 @@
     (cal ? cal.pts : ptsCal).forEach((p) => croixCal(p.x, p.y, "#111"));
     if (tmp) croixCal(tmp.x, tmp.y, "#e53935");
     if (!cal) return;
+    routeSVG(svg, T);
     // NOTAM
     items.forEach((it) => { it.px = enPixels(it); });
     placerEtiquettes();
@@ -282,7 +337,7 @@
     afficherListe();
     const info = $("#cInfo");
     if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Trier</b>.</p>`;
-    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.</p>`;
+    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en rose." : ""}</p>`;
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
   }
@@ -371,9 +426,10 @@
     });
     const nbLignes = blocs.reduce((s, b) => s + b.sous.length, 0);
     const entete = typeof dernierTri !== "undefined" && dernierTri ? `NOTAM retenus — vol du ${fJour(dernierTri.t1)} ${fHeure(dernierTri.t1)}→${fHeure(dernierTri.t2)} (heure de Paris)` : "NOTAM retenus";
-    const hLeg = Math.round(police * 1.2 + ligneH * (nbLignes + 2));
+    const hLeg = Math.round(police * 1.2 + ligneH * (nbLignes + 3.2));
     cv.width = nat.w; cv.height = nat.h + hLeg;
     ctx.drawImage(image, 0, 0);
+    const txtRoute = routeCanvas(ctx, T);
     // repères
     items.forEach((it) => {
       const px = it.px;
@@ -399,6 +455,7 @@
     ctx.fillStyle = "#fff"; ctx.fillRect(0, nat.h, nat.w, hLeg);
     let y = nat.h + police * 1.6;
     ctx.fillStyle = "#111"; ctx.font = `bold ${police}px Helvetica, Arial, sans-serif`; ctx.fillText(entete, police, y); y += ligneH * 1.2;
+    if (txtRoute) { ctx.fillStyle = ROSE; ctx.fillText(txtRoute, police, y); y += ligneH * 1.2; ctx.fillStyle = "#111"; }
     ctx.font = `${police}px Helvetica, Arial, sans-serif`;
     blocs.forEach((b) => {
       ctx.fillStyle = b.it.couleur; ctx.beginPath(); ctx.arc(police * 1.0, y - police * 0.35, police * 0.4, 0, 2 * Math.PI); ctx.fill();
@@ -544,8 +601,6 @@
 
   /* Mode « modifier la route » : toucher la carte ajoute un point, glisser déplace, toucher un point le supprime */
   let editionRoute = false;
-  let rayonLocal = 20;
-  try { rayonLocal = +localStorage.getItem("cRayonLocal") || 20; } catch (e) {}
   function basculerEdition() {
     editionRoute = !editionRoute;
     const b = $("#ofmEditer");
