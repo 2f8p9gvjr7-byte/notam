@@ -111,6 +111,38 @@
     return out;
   }
 
+  /* ---------- Étiquettes : écartées pour ne pas se chevaucher ---------- */
+  function placerEtiquettes() {
+    const T = tailles();
+    const pris = [];
+    const minD = T.etiq * 2.3;
+    const libre = (x, y) => pris.every((q) => Math.hypot(q.x - x, q.y - y) >= minD) &&
+      x > T.etiq && x < nat.w - T.etiq && y > T.etiq && y < nat.h - T.etiq;
+    // les repères eux-mêmes (points, croix) sont aussi des obstacles pour les étiquettes
+    const marques = [];
+    items.forEach((it) => { if (it.px && it.px.dedans && (it.px.type === "point" || it.px.type === "croix")) it.px.p.forEach((q) => marques.push(q)); });
+    const loinDesMarques = (x, y) => marques.every((q) => Math.hypot(q.x - x, q.y - y) >= T.etiq * 1.6);
+    items.forEach((it) => {
+      const px = it.px;
+      if (!px || !px.dedans) return;
+      const a = px.ancre;
+      const d0 = T.etiq * 1.7;
+      let choix = null;
+      for (let anneau = 1; anneau <= 6 && !choix; anneau++) {
+        const d = d0 * anneau;
+        for (let k = 0; k < 12 && !choix; k++) {
+          const ang = -Math.PI / 4 + (k * Math.PI) / 6; // on commence en haut à droite
+          const x = a.x + d * Math.cos(ang), y = a.y - d * Math.sin(ang);
+          if (libre(x, y) && loinDesMarques(x, y)) choix = { x, y };
+        }
+      }
+      if (!choix) choix = { x: a.x + d0 * 0.7, y: a.y - d0 * 0.7 };
+      choix.trait = Math.hypot(choix.x - a.x, choix.y - a.y) > d0 * 1.2;
+      it.etiq = choix;
+      pris.push(choix);
+    });
+  }
+
   /* ---------- Dessin à l'écran (SVG) ---------- */
   function tailles() {
     const base = Math.max(nat.w, nat.h) / 100;
@@ -137,21 +169,26 @@
     if (tmp) croixCal(tmp.x, tmp.y, "#e53935");
     if (!cal) return;
     // NOTAM
+    items.forEach((it) => { it.px = enPixels(it); });
+    placerEtiquettes();
     items.forEach((it) => {
-      const px = enPixels(it);
-      it.px = px;
+      const px = it.px;
       if (!px || !px.dedans) return;
       const g = el("g", { "data-num": it.num, style: "cursor:pointer" }, svg);
       const c = it.couleur;
-      if (px.type === "cercle") el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: px.r, fill: c, "fill-opacity": 0.12, stroke: c, "stroke-width": T.trait }, g);
+      if (px.type === "cercle") {
+        el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: px.r, fill: "none", stroke: c, "stroke-width": T.trait * 0.7, "stroke-dasharray": `${T.trait * 3} ${T.trait * 2.5}`, opacity: 0.85 }, g);
+        el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: T.trait * 1.3, fill: c }, g);
+      }
       if (px.type === "poly") el("polygon", { points: px.p.map((q) => `${q.x},${q.y}`).join(" "), fill: c, "fill-opacity": 0.15, stroke: c, "stroke-width": T.trait }, g);
       if (px.type === "point") px.p.forEach((q) => el("circle", { cx: q.x, cy: q.y, r: T.croix * 0.6, fill: c, stroke: "#fff", "stroke-width": T.trait * 0.6 }, g));
       if (px.type === "croix") px.p.forEach((q) => {
         el("line", { x1: q.x - T.croix, y1: q.y - T.croix, x2: q.x + T.croix, y2: q.y + T.croix, stroke: c, "stroke-width": T.trait * 1.6 }, g);
         el("line", { x1: q.x - T.croix, y1: q.y + T.croix, x2: q.x + T.croix, y2: q.y - T.croix, stroke: c, "stroke-width": T.trait * 1.6 }, g);
       });
-      // étiquette numérotée, décalée en haut à droite du repère
-      const ex = px.ancre.x + T.etiq * 1.2, ey = px.ancre.y - T.etiq * 1.2;
+      // étiquette numérotée (position écartée des autres), avec trait de rappel si éloignée
+      const ex = it.etiq.x, ey = it.etiq.y;
+      if (it.etiq.trait) el("line", { x1: px.ancre.x, y1: px.ancre.y, x2: ex, y2: ey, stroke: c, "stroke-width": T.trait * 0.6 }, g);
       el("circle", { cx: ex, cy: ey, r: T.etiq, fill: c, stroke: "#fff", "stroke-width": T.trait * 0.7 }, g);
       const t = el("text", { x: ex, y: ey + T.police * 0.35, "text-anchor": "middle", "font-size": T.police, "font-weight": "700", "font-family": "Helvetica, Arial, sans-serif", fill: "#fff" }, g);
       t.textContent = it.num;
@@ -234,6 +271,10 @@
   /* ---------- Rafraîchissement général ---------- */
   function rafraichir() {
     construire();
+    if (mode === "ofm") {
+      if (!document.getElementById("tab-carte").classList.contains("actif")) return; // carte dessinée à l'ouverture de l'onglet
+      dessinerOFM(); afficherListe(); infoOFM(); return;
+    }
     const zone = $("#cZone");
     zone.hidden = !image;
     if (image) dessinerSVG();
@@ -291,6 +332,13 @@
   function montrer(num) {
     const it = items.find((i) => i.num === num);
     if (!it) return;
+    if (mode === "ofm") {
+      const m = marqueursOFM[num];
+      if (m && ofm) { ofm.setView(m.getLatLng(), Math.max(ofm.getZoom(), 9)); m.openPopup(); window.scrollTo(0, $("#ofmMap").getBoundingClientRect().top + window.scrollY - 70); }
+      else toast("Ce NOTAM n'a pas de position utilisable", 3000);
+      document.querySelectorAll(".c-item").forEach((x) => x.classList.toggle("actif", +x.dataset.num === num));
+      return;
+    }
     const q = it.n.q && !it.n.q.erreur ? it.n.q : null;
     toast(`${num}. ${q ? q.code + " " : ""}${titre(it.n)}${quand(it.n) ? " · " + quand(it.n) : ""}`, 4000);
     document.querySelectorAll(".c-item").forEach((x) => x.classList.toggle("actif", +x.dataset.num === num));
@@ -331,11 +379,16 @@
       const px = it.px;
       if (!px || !px.dedans) return;
       ctx.strokeStyle = it.couleur; ctx.fillStyle = it.couleur; ctx.lineWidth = T.trait;
-      if (px.type === "cercle") { ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, px.r, 0, 2 * Math.PI); ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); }
+      if (px.type === "cercle") {
+        ctx.save(); ctx.lineWidth = T.trait * 0.7; ctx.setLineDash([T.trait * 3, T.trait * 2.5]); ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, px.r, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+        ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, T.trait * 1.3, 0, 2 * Math.PI); ctx.fill();
+      }
       if (px.type === "poly") { ctx.beginPath(); px.p.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.globalAlpha = 0.15; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); }
       if (px.type === "point") px.p.forEach((q) => { ctx.beginPath(); ctx.arc(q.x, q.y, T.croix * 0.6, 0, 2 * Math.PI); ctx.fill(); });
       if (px.type === "croix") px.p.forEach((q) => { ctx.lineWidth = T.trait * 1.6; ctx.beginPath(); ctx.moveTo(q.x - T.croix, q.y - T.croix); ctx.lineTo(q.x + T.croix, q.y + T.croix); ctx.moveTo(q.x - T.croix, q.y + T.croix); ctx.lineTo(q.x + T.croix, q.y - T.croix); ctx.stroke(); });
-      const ex = px.ancre.x + T.etiq * 1.2, ey = px.ancre.y - T.etiq * 1.2;
+      const ex = it.etiq.x, ey = it.etiq.y;
+      if (it.etiq.trait) { ctx.lineWidth = T.trait * 0.6; ctx.beginPath(); ctx.moveTo(px.ancre.x, px.ancre.y); ctx.lineTo(ex, ey); ctx.stroke(); }
       ctx.beginPath(); ctx.arc(ex, ey, T.etiq, 0, 2 * Math.PI); ctx.fillStyle = it.couleur; ctx.fill();
       ctx.lineWidth = T.trait * 0.7; ctx.strokeStyle = "#fff"; ctx.stroke();
       ctx.fillStyle = "#fff"; ctx.font = `bold ${T.police}px Helvetica, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -369,6 +422,117 @@
     } catch (err) { if (err && err.name !== "AbortError") toast("Partage impossible", 3000); }
   });
 
+  /* ---------- Carte en ligne open flightmaps (Leaflet) ---------- */
+  let mode = "ofm";
+  try { mode = localStorage.getItem("cMode") || "ofm"; } catch (e) {}
+  let ofm = null, ofmCouche = null, dejaCadre = false;
+  const marqueursOFM = {};
+
+  function initOFM() {
+    if (ofm || typeof L === "undefined") return;
+    ofm = L.map("ofmMap", { zoomControl: true, attributionControl: true, minZoom: 5, maxZoom: 14 });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 14, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    }).addTo(ofm);
+    L.tileLayer("https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest", {
+      minZoom: 6, maxZoom: 14, minNativeZoom: 7, maxNativeZoom: 12,
+      attribution: '© <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a> (OFMA General Users\' License)'
+    }).addTo(ofm);
+    let vue = null;
+    try { vue = JSON.parse(localStorage.getItem("cVue") || "null"); } catch (e) {}
+    if (vue) { ofm.setView([vue.lat, vue.lon], vue.z); dejaCadre = true; }
+    else ofm.setView([48.5, 6.3], 8);
+    ofm.on("moveend", () => {
+      const c = ofm.getCenter();
+      try { localStorage.setItem("cVue", JSON.stringify({ lat: c.lat, lon: c.lng, z: ofm.getZoom() })); } catch (e) {}
+    });
+    ofmCouche = L.layerGroup().addTo(ofm);
+  }
+
+  function popupHTML(it) {
+    const n = it.n, q = n.q && !n.q.erreur ? n.q : null;
+    const E = ((n.champs && n.champs.E) || "").replace(/\s+/g, " ");
+    const lim = n.champs && (n.champs.F || n.champs.G) ? `${esc(n.champs.F || "?")} → ${esc(n.champs.G || "?")}` : "";
+    return `<div class="ofm-pop"><b>${it.num}. ${esc(q ? q.code : "")}</b> ${esc(titre(n))}<br>
+      <small>${esc(n.id || "")}${quand(n) ? " · " + esc(quand(n)) : ""}${lim ? " · " + lim : ""}</small>
+      <div class="ofm-e">${esc(E.slice(0, 280))}${E.length > 280 ? "…" : ""}</div>
+      ${it.forme && it.forme.type === "cercle" ? '<small class="ofm-approx">Cercle indicatif (centre et rayon de la ligne Q), pas la forme réelle de la zone.</small>' : ""}</div>`;
+  }
+
+  function dessinerOFM() {
+    initOFM();
+    if (!ofm) return;
+    ofmCouche.clearLayers();
+    for (const k in marqueursOFM) delete marqueursOFM[k];
+    const bornes = [];
+    const groupes = {};
+    items.forEach((it) => {
+      const f = it.forme;
+      if (!f) return;
+      const c = it.couleur;
+      let ancre;
+      if (f.type === "cercle") {
+        const g = f.geo[0];
+        L.circle([g.lat, g.lon], { radius: f.r * 1852, color: c, weight: 2, dashArray: "6 6", fill: false, interactive: false }).addTo(ofmCouche);
+        L.circleMarker([g.lat, g.lon], { radius: 3, color: c, fillColor: c, fillOpacity: 1, weight: 1, interactive: false }).addTo(ofmCouche);
+        ancre = g;
+      } else if (f.type === "poly") {
+        L.polygon(f.geo.map((g) => [g.lat, g.lon]), { color: c, weight: 2, fillOpacity: 0.15, interactive: false }).addTo(ofmCouche);
+        ancre = { lat: f.geo.reduce((a, g) => a + g.lat, 0) / f.geo.length, lon: f.geo.reduce((a, g) => a + g.lon, 0) / f.geo.length };
+      } else {
+        f.geo.forEach((g) => {
+          const html = f.type === "croix" ? `<span class="ofm-croix" style="color:${c}">✕</span>` : `<span class="ofm-point" style="background:${c}"></span>`;
+          L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html, iconSize: [18, 18], iconAnchor: [9, 9] }), interactive: false }).addTo(ofmCouche);
+        });
+        ancre = f.geo[0];
+      }
+      bornes.push([ancre.lat, ancre.lon]);
+      const cle = ancre.lat.toFixed(3) + "," + ancre.lon.toFixed(3);
+      (groupes[cle] = groupes[cle] || []).push({ it, ancre });
+    });
+    // numéros : écartés en couronne quand plusieurs NOTAM partagent le même point
+    Object.values(groupes).forEach((g) => {
+      g.forEach(({ it, ancre }, k) => {
+        let dx = 14, dy = -14;
+        if (g.length > 1) { const a = -Math.PI / 4 + (k * 2 * Math.PI) / g.length; dx = Math.round(26 * Math.cos(a)); dy = Math.round(-26 * Math.sin(a)); }
+        const html = `<span class="ofm-num" style="background:${it.couleur}">${it.num}</span>`;
+        const m = L.marker([ancre.lat, ancre.lon], {
+          icon: L.divIcon({ className: "", html, iconSize: [26, 26], iconAnchor: [13 - dx, 13 - dy], popupAnchor: [dx, dy - 12] }),
+          zIndexOffset: 1000
+        }).bindPopup(popupHTML(it), { maxWidth: 280 }).addTo(ofmCouche);
+        marqueursOFM[it.num] = m;
+      });
+    });
+    if (!dejaCadre && bornes.length) { ofm.fitBounds(bornes, { padding: [30, 30], maxZoom: 10 }); dejaCadre = true; }
+    setTimeout(() => ofm.invalidateSize(), 50);
+  }
+
+  function infoOFM() {
+    const info = $("#cInfo");
+    if (!items.length) { info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Trier</b>.</p>`; return; }
+    const places = items.filter((i) => i.forme).length;
+    info.innerHTML = `<p class="note">${items.length} NOTAM cochés · ${places} placés sur la carte. <a href="#" id="ofmCadrer">Recadrer sur les NOTAM</a></p>`;
+    const a = $("#ofmCadrer");
+    if (a) a.addEventListener("click", (e) => { e.preventDefault(); dejaCadre = false; dessinerOFM(); });
+  }
+
+  function choisirMode(m) {
+    mode = m;
+    try { localStorage.setItem("cMode", m); } catch (e) {}
+    $("#modeOfm").classList.toggle("actif", m === "ofm");
+    $("#modeCapture").classList.toggle("actif", m === "capture");
+    $("#ofmBloc").hidden = m !== "ofm";
+    $("#captureBloc").hidden = m !== "capture";
+    rafraichir();
+  }
+  $("#modeOfm").addEventListener("click", () => choisirMode("ofm"));
+  $("#modeCapture").addEventListener("click", () => choisirMode("capture"));
+  window.addEventListener("resize", () => { if (ofm) ofm.invalidateSize(); });
+
   /* ---------- Au démarrage : capture mémorisée ---------- */
+  $("#ofmBloc").hidden = mode !== "ofm";
+  $("#captureBloc").hidden = mode !== "capture";
+  $("#modeOfm").classList.toggle("actif", mode === "ofm");
+  $("#modeCapture").classList.toggle("actif", mode === "capture");
   lireImage().then((b) => { if (b) chargerBlob(b, false); else rafraichir(); });
 })();

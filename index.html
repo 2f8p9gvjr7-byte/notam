@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="Q-code">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./leaflet.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -84,6 +85,15 @@
 
     <!-- Carte -->
     <section id="tab-carte" class="tab">
+      <div class="bascule">
+        <button id="modeOfm" class="actif">🌍 Carte OFM</button>
+        <button id="modeCapture">🖼 Ma capture</button>
+      </div>
+      <div id="ofmBloc">
+        <div id="ofmMap" class="ofm-map"></div>
+        <p class="note">Carte aéronautique <b>open flightmaps</b> (cycle AIRAC en cours) — nécessite une connexion ; les zones déjà affichées restent consultables hors connexion. Touchez un numéro pour le détail.</p>
+      </div>
+      <div id="captureBloc" hidden>
       <div class="actions actions-carte">
         <label class="bouton-lien" for="cImage">🖼 Capture</label>
         <input id="cImage" type="file" accept="image/*" hidden>
@@ -94,6 +104,7 @@
       <div id="cZone" class="carte-zone" hidden>
         <img id="cImg" alt="Capture de carte">
         <svg id="cSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
       </div>
       <div id="cInfo"></div>
       <div id="cListe"></div>
@@ -130,6 +141,7 @@
   <div id="toast" class="toast"></div>
 
   <script src="./codes.js"></script>
+  <script src="./leaflet.js"></script>
   <script src="./app.js"></script>
   <script src="./carte.js"></script>
 </body>
