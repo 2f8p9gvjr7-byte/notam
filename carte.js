@@ -695,6 +695,7 @@
     dejaCadre = false; dessinerOFM(); $("#ofmRoute").blur();
   });
   $("#ofmRoute").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#ofmRouteOk").click(); });
+  $("#ofmQuitter").addEventListener("click", () => { if ($("#ofmBloc").classList.contains("plein")) basculerPlein(); });
   $("#modeOfm").addEventListener("click", () => choisirMode("ofm"));
   $("#modeCapture").addEventListener("click", () => choisirMode("capture"));
   window.addEventListener("resize", () => { if (ofm) ofm.invalidateSize(); });

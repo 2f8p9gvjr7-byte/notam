@@ -277,3 +277,16 @@ h1 { white-space: nowrap; }
 #ofmMap.edition { cursor: crosshair; outline: 3px solid #d81b60; }
 
 .toast { white-space: normal; width: max-content; max-width: 92vw; text-align: center; border-radius: 16px; }
+
+/* Plein écran : rester sous la barre d'état et au-dessus de la barre d'accueil de l'iPhone */
+#ofmBloc.plein .leaflet-top { top: calc(env(safe-area-inset-top) + 8px); }
+#ofmBloc.plein .leaflet-bottom { bottom: calc(env(safe-area-inset-bottom) + 70px); }
+.ofm-quitter { display: none; }
+#ofmBloc.plein .ofm-quitter {
+  display: block; position: fixed; z-index: 1000; left: 50%; transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  border: 0; background: #d81b60; color: #fff; font-weight: 700; font-size: 16px;
+  padding: 12px 22px; border-radius: 26px; box-shadow: 0 2px 8px rgba(0,0,0,.5);
+}
+
+#ofmBloc.plein .ofm-quitter { white-space: nowrap; }
