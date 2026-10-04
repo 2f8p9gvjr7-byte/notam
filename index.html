@@ -90,6 +90,11 @@
         <button id="modeCapture">🖼 Ma capture</button>
       </div>
       <div id="ofmBloc">
+        <div class="route-ligne">
+          <input id="ofmRoute" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Route : LFGY LFSN (points tournants possibles)">
+          <button id="ofmRouteOk">Tracer</button>
+        </div>
+        <div id="ofmRouteInfo" class="route-info"></div>
         <div id="ofmMap" class="ofm-map"></div>
         <p class="note">Carte aéronautique <b>open flightmaps</b> (cycle AIRAC en cours) — nécessite une connexion ; les zones déjà affichées restent consultables hors connexion. Touchez un numéro pour le détail.</p>
       </div>
@@ -142,6 +147,7 @@
 
   <script src="./codes.js"></script>
   <script src="./leaflet.js"></script>
+  <script src="./aerodromes.js"></script>
   <script src="./app.js"></script>
   <script src="./carte.js"></script>
 </body>

@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "2.4";
+const APP_VERSION = "2.5";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;

@@ -426,6 +426,8 @@
   let mode = "ofm";
   try { mode = localStorage.getItem("cMode") || "ofm"; } catch (e) {}
   let ofm = null, ofmCouche = null, dejaCadre = false;
+  let masquerCercles = false;
+  try { masquerCercles = localStorage.getItem("cSansCercles") === "1"; } catch (e) {}
   const marqueursOFM = {};
 
   function initOFM() {
@@ -447,6 +449,100 @@
       try { localStorage.setItem("cVue", JSON.stringify({ lat: c.lat, lon: c.lng, z: ofm.getZoom() })); } catch (e) {}
     });
     ofmCouche = L.layerGroup().addTo(ofm);
+
+    const Boutons = L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
+        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a>`;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      }
+    });
+    ofm.addControl(new Boutons());
+    $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
+    $("#ofmCercles").addEventListener("click", (e) => {
+      e.preventDefault();
+      masquerCercles = !masquerCercles;
+      try { localStorage.setItem("cSansCercles", masquerCercles ? "1" : "0"); } catch (err) {}
+      majBoutons(); dessinerOFM();
+      toast(masquerCercles ? "Cercles indicatifs masqués" : "Cercles indicatifs affichés", 2000);
+    });
+    majBoutons();
+  }
+
+  function majBoutons() {
+    const c = $("#ofmCercles");
+    if (c) c.classList.toggle("off", masquerCercles);
+    const p = $("#ofmPlein");
+    if (p) p.textContent = $("#ofmBloc").classList.contains("plein") ? "✕" : "⛶";
+  }
+  function basculerPlein() {
+    const b = $("#ofmBloc");
+    b.classList.toggle("plein");
+    document.body.style.overflow = b.classList.contains("plein") ? "hidden" : "";
+    majBoutons();
+    setTimeout(() => ofm.invalidateSize(), 60);
+  }
+
+  /* ---------- Route ---------- */
+  function lirePoint(tok) {
+    if (typeof AERODROMES !== "undefined" && AERODROMES[tok]) { const a = AERODROMES[tok]; return { lat: a[0], lon: a[1], nom: tok, info: a[2] }; }
+    let m = tok.match(/^(\d{2})(\d{2})(\d{2})?([NS])(\d{3})(\d{2})(\d{2})?([EW])$/);
+    if (m) {
+      const lat = (+m[1] + +m[2] / 60 + (+m[3] || 0) / 3600) * (m[4] === "S" ? -1 : 1);
+      const lon = (+m[5] + +m[6] / 60 + (+m[7] || 0) / 3600) * (m[8] === "W" ? -1 : 1);
+      return { lat, lon, nom: tok };
+    }
+    return null;
+  }
+  function distCap(a, b) {
+    const R = Math.PI / 180, f1 = a.lat * R, f2 = b.lat * R, dl = (b.lon - a.lon) * R;
+    const d = 2 * Math.asin(Math.sqrt(Math.sin((f2 - f1) / 2) ** 2 + Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) ** 2));
+    const y = Math.sin(dl) * Math.cos(f2), x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+    return { nm: (d * 6371) / 1.852, cap: (Math.atan2(y, x) / R + 360) % 360 };
+  }
+  function routeTexte() {
+    const champ = $("#ofmRoute");
+    const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null;
+    const sig = en && (en.de || en.vers) ? (en.de || "") + "-" + (en.vers || "") : "";
+    let dernierSig = "";
+    try { dernierSig = localStorage.getItem("cRouteSig") || ""; } catch (e) {}
+    if (sig && sig !== dernierSig) {          // nouveau briefing SOFIA : route reprise de l'en-tête
+      champ.value = [en.de, en.vers].filter(Boolean).join(" ");
+      try { localStorage.setItem("cRouteSig", sig); localStorage.setItem("cRoute", champ.value); } catch (e) {}
+    } else if (!champ.value) {
+      try { champ.value = localStorage.getItem("cRoute") || ""; } catch (e) {}
+    }
+    return champ.value;
+  }
+  function routePoints() {
+    const toks = routeTexte().toUpperCase().split(/[\s,;>\-–→]+/).filter(Boolean);
+    const pts = [], inconnus = [];
+    toks.forEach((t) => { const p = lirePoint(t); if (p) pts.push(p); else inconnus.push(t); });
+    return { pts, inconnus };
+  }
+  function dessinerRoute(bornes) {
+    const { pts, inconnus } = routePoints();
+    const info = $("#ofmRouteInfo");
+    if (!pts.length) { info.innerHTML = inconnus.length ? `⚠ Inconnu : ${esc(inconnus.join(", "))}` : ""; return; }
+    if (pts.length > 1) {
+      L.polyline(pts.map((p) => [p.lat, p.lon]), { color: "#d81b60", weight: 4, opacity: 0.9, interactive: false }).addTo(ofmCouche);
+    }
+    pts.forEach((p) => {
+      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html: `<span class="ofm-wpt">${esc(p.nom)}</span>`, iconSize: null, iconAnchor: [-6, 10] }), interactive: false }).addTo(ofmCouche);
+      L.circleMarker([p.lat, p.lon], { radius: 5, color: "#fff", weight: 2, fillColor: "#d81b60", fillOpacity: 1, interactive: false }).addTo(ofmCouche);
+      bornes.push([p.lat, p.lon]);
+    });
+    let total = 0;
+    const branches = [];
+    for (let i = 1; i < pts.length; i++) {
+      const dc = distCap(pts[i - 1], pts[i]);
+      total += dc.nm;
+      branches.push(`${esc(pts[i - 1].nom)}→${esc(pts[i].nom)} ${String(Math.round(dc.cap)).padStart(3, "0")}° ${Math.round(dc.nm)} NM`);
+    }
+    info.innerHTML = (branches.length ? branches.join(" · ") + (branches.length > 1 ? ` · total ${Math.round(total)} NM` : "") + " <small>(routes vraies, sans déclinaison)</small>" : "")
+      + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
   }
 
   function popupHTML(it) {
@@ -465,6 +561,7 @@
     ofmCouche.clearLayers();
     for (const k in marqueursOFM) delete marqueursOFM[k];
     const bornes = [];
+    dessinerRoute(bornes);
     const groupes = {};
     items.forEach((it) => {
       const f = it.forme;
@@ -473,7 +570,7 @@
       let ancre;
       if (f.type === "cercle") {
         const g = f.geo[0];
-        L.circle([g.lat, g.lon], { radius: f.r * 1852, color: c, weight: 2, dashArray: "6 6", fill: false, interactive: false }).addTo(ofmCouche);
+        if (!masquerCercles) L.circle([g.lat, g.lon], { radius: f.r * 1852, color: c, weight: 2, dashArray: "6 6", fill: false, interactive: false }).addTo(ofmCouche);
         L.circleMarker([g.lat, g.lon], { radius: 3, color: c, fillColor: c, fillOpacity: 1, weight: 1, interactive: false }).addTo(ofmCouche);
         ancre = g;
       } else if (f.type === "poly") {
@@ -525,6 +622,11 @@
     $("#captureBloc").hidden = m !== "capture";
     rafraichir();
   }
+  $("#ofmRouteOk").addEventListener("click", () => {
+    try { localStorage.setItem("cRoute", $("#ofmRoute").value); } catch (e) {}
+    dejaCadre = false; dessinerOFM(); $("#ofmRoute").blur();
+  });
+  $("#ofmRoute").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#ofmRouteOk").click(); });
   $("#modeOfm").addEventListener("click", () => choisirMode("ofm"));
   $("#modeCapture").addEventListener("click", () => choisirMode("capture"));
   window.addEventListener("resize", () => { if (ofm) ofm.invalidateSize(); });

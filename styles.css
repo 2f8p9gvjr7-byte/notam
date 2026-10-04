@@ -254,3 +254,19 @@ h1 { white-space: nowrap; }
 .leaflet-container a { color: #1e63c8; }
 
 #ofmCadrer { color: var(--orange); }
+
+.route-ligne { display: flex; gap: 6px; margin-bottom: 6px; }
+.route-ligne input { flex: 1; min-width: 0; font: 15px var(--mono); text-transform: uppercase; background: var(--carte); color: var(--texte); border: 2px solid var(--bord); border-radius: 10px; padding: 9px 10px; }
+.route-ligne input:focus { border-color: var(--orange); outline: none; }
+.route-ligne button { border: 0; background: #d81b60; color: #fff; font-weight: 700; font-size: 14px; padding: 0 14px; border-radius: 10px; }
+.route-info { font-family: var(--mono); font-size: 12.5px; color: var(--texte); margin: 0 0 8px; }
+.route-info small { color: var(--doux); font-family: inherit; }
+.route-info .warn { color: var(--orange); }
+.ofm-wpt { display: inline-block; white-space: nowrap; background: #d81b60; color: #fff; font: 700 11px -apple-system, Helvetica, Arial, sans-serif; padding: 1px 5px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.ofm-boutons a { font-size: 18px; line-height: 30px !important; color: #222 !important; text-decoration: none; }
+.ofm-boutons a.off { color: #bbb !important; text-decoration: line-through; }
+#ofmBloc.plein { position: fixed; inset: 0; z-index: 40; background: var(--fond); padding: 0; margin: 0; }
+#ofmBloc.plein .route-ligne, #ofmBloc.plein .route-info, #ofmBloc.plein .note { display: none; }
+#ofmBloc.plein .ofm-map { height: 100vh; height: 100dvh; border-radius: 0; border: 0; }
+
+.toast { z-index: 60; }
