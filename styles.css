@@ -31,7 +31,7 @@ h1 span { color: var(--texte); font-weight: 400; }
 .onglets { display: flex; gap: 4px; background: var(--carte); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
 .onglets button {
   flex: 1; border: 0; background: transparent; color: var(--doux);
-  padding: 9px 1px; border-radius: 9px; font-size: 12.5px; font-weight: 600;
+  padding: 9px 0; border-radius: 9px; font-size: 11.5px; font-weight: 600;
 }
 .onglets button.actif { background: var(--orange); color: #1a1a1a; }
 
@@ -216,3 +216,18 @@ html, body { overflow-x: hidden; }
 .lect .info { font-size: 14px; margin-top: 4px; }
 .lect .info span { color: var(--doux); }
 .lect .texte-e { margin-top: 8px; font-size: 14px; }
+
+.actions-carte { justify-content: flex-start; margin: 0 0 10px; }
+.actions-carte .bouton-lien { cursor: pointer; }
+.carte-zone { position: relative; margin: 8px 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--bord); }
+.carte-zone img { display: block; width: 100%; height: auto; }
+.carte-zone svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.etape { background: var(--carte); border: 2px solid var(--orange); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 14px; }
+.etape-form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.etape-form label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--doux); font-size: 13px; }
+.etape-form select { font: 16px var(--mono); background: var(--fond); color: var(--texte); border: 1px solid var(--bord); border-radius: 8px; padding: 6px; }
+.etape-form button { border: 0; background: var(--orange); color: #1a1a1a; font-weight: 700; font-size: 15px; padding: 10px; border-radius: 10px; }
+.c-item { display: flex; gap: 10px; align-items: flex-start; background: var(--carte); border-radius: 8px; padding: 8px 10px; margin-bottom: 4px; cursor: pointer; font-size: 14px; }
+.c-item.actif { outline: 2px solid var(--orange); }
+.c-item small { display: block; color: var(--doux); font-size: 12px; margin-top: 2px; }
+.c-num { flex: 0 0 auto; min-width: 24px; height: 24px; border-radius: 12px; color: #fff; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }

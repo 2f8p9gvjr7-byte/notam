@@ -21,6 +21,7 @@
   <nav class="onglets">
     <button data-tab="decoder" class="actif">Décoder</button>
     <button data-tab="trier">Trier</button>
+    <button data-tab="carte">Carte</button>
     <button data-tab="lexique">Lexique</button>
     <button data-tab="chercher">Chercher</button>
     <button data-tab="liste">Codes</button>
@@ -79,6 +80,23 @@
       <div id="resultatsMot"></div>
     </section>
 
+    <!-- Carte -->
+    <section id="tab-carte" class="tab">
+      <div class="actions actions-carte">
+        <label class="bouton-lien" for="cImage">🖼 Capture</label>
+        <input id="cImage" type="file" accept="image/*" hidden>
+        <button id="cRecaler" hidden>↺ Recaler</button>
+        <button id="cPartager" hidden>📤 Partager</button>
+      </div>
+      <div id="cEtape"></div>
+      <div id="cZone" class="carte-zone" hidden>
+        <img id="cImg" alt="Capture de carte">
+        <svg id="cSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="cInfo"></div>
+      <div id="cListe"></div>
+    </section>
+
     <!-- Lexique -->
     <section id="tab-lexique" class="tab">
       <label for="abrev" class="aide">Abréviation (PPR, RDL, HJ…) ou mot en français (soleil, piste…)</label>
@@ -111,5 +129,6 @@
 
   <script src="./codes.js"></script>
   <script src="./app.js"></script>
+  <script src="./carte.js"></script>
 </body>
 </html>

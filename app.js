@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "2.0";
+const APP_VERSION = "2.1";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -30,6 +30,7 @@ function ouvrirOnglet(nom) {
   document.querySelectorAll(".onglets button").forEach((x) => x.classList.toggle("actif", x.dataset.tab === nom));
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("actif", x.id === "tab-" + nom));
   try { localStorage.setItem("onglet", nom); } catch (e) {}
+  if (nom === "carte" && window.majCarte) window.majCarte();
 }
 
 /* ---------- Saisie ---------- */
@@ -436,6 +437,7 @@ function trierInterne() {
   html += `<p class="note">Le tri est une aide : en cas de doute, un NOTAM reste dans « À lire ». Les limites d'altitude du tri viennent de la ligne Q) et sont approximatives. Touchez un NOTAM pour le détail.</p>`;
   zone.innerHTML = html;
   majCompteur();
+  if (window.majCarte && !document.getElementById("tab-carte").hidden && document.getElementById("tab-carte").classList.contains("actif")) window.majCarte();
 }
 
 [tDep, tDur, tAlt].forEach((el) => el.addEventListener("change", trier));
@@ -489,6 +491,7 @@ $("#tResultat").addEventListener("change", (e) => {
   c.classList.toggle("decoche", !cb.checked);
   sauverChoix();
   majCompteur();
+  if (window.majCarte) window.majCarte();
 });
 
 /* ---------- Lecture à l'écran des NOTAM cochés ---------- */
