@@ -270,3 +270,10 @@ h1 { white-space: nowrap; }
 #ofmBloc.plein .ofm-map { height: 100vh; height: 100dvh; border-radius: 0; border: 0; }
 
 .toast { z-index: 60; }
+
+.ofm-boutons a.on { background: #d81b60 !important; color: #fff !important; }
+.ofm-poignee { display: block; width: 22px; height: 22px; margin: 2px; border-radius: 11px; background: #d81b60; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.ofm-poignee.ext { background: #fff; border-color: #d81b60; }
+#ofmMap.edition { cursor: crosshair; outline: 3px solid #d81b60; }
+
+.toast { white-space: normal; width: max-content; max-width: 92vw; text-align: center; border-radius: 16px; }

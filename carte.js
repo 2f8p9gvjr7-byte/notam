@@ -454,13 +454,15 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a>`;
+        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
     });
     ofm.addControl(new Boutons());
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
+    $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
+    ofm.on("click", (e) => { if (editionRoute) ajouterPointCarte(e.latlng); });
     $("#ofmCercles").addEventListener("click", (e) => {
       e.preventDefault();
       masquerCercles = !masquerCercles;
@@ -516,22 +518,88 @@
     }
     return champ.value;
   }
+  /* Jetons de la route (le champ texte est la référence) */
+  function routeJetons() { return routeTexte().toUpperCase().split(/[\s,;>\-–→]+/).filter(Boolean); }
+  function ecrireJetons(j) {
+    const v = j.join(" ");
+    $("#ofmRoute").value = v;
+    try { localStorage.setItem("cRoute", v); } catch (e) {}
+  }
   function routePoints() {
-    const toks = routeTexte().toUpperCase().split(/[\s,;>\-–→]+/).filter(Boolean);
+    const toks = routeJetons();
     const pts = [], inconnus = [];
-    toks.forEach((t) => { const p = lirePoint(t); if (p) pts.push(p); else inconnus.push(t); });
+    let n = 0;
+    toks.forEach((t, k) => {
+      const p = lirePoint(t);
+      if (!p) { inconnus.push(t); return; }
+      p.jeton = k;
+      p.coord = !(typeof AERODROMES !== "undefined" && AERODROMES[t]);
+      if (p.coord) p.nom = "P" + (++n);
+      pts.push(p);
+    });
     return { pts, inconnus };
   }
+  const deg2 = (v, w) => { const a = Math.abs(v); const d = Math.floor(a); const mf = (a - d) * 60; let m = Math.floor(mf); let sec = Math.round((mf - m) * 60); if (sec === 60) { sec = 0; m++; } return String(d).padStart(w, "0") + String(m).padStart(2, "0") + String(sec).padStart(2, "0"); };
+  const fmtCoord = (lat, lon) => deg2(lat, 2) + (lat >= 0 ? "N" : "S") + deg2(lon, 3) + (lon >= 0 ? "E" : "W");
+
+  /* Mode « modifier la route » : toucher la carte ajoute un point, glisser déplace, toucher un point le supprime */
+  let editionRoute = false;
+  function basculerEdition() {
+    editionRoute = !editionRoute;
+    const b = $("#ofmEditer");
+    if (b) b.classList.toggle("on", editionRoute);
+    $("#ofmMap").classList.toggle("edition", editionRoute);
+    if (editionRoute) toast("Touchez la carte pour ajouter un point · glissez un point pour le déplacer · touchez-le pour le supprimer", 5000);
+    dessinerOFM();
+  }
+  function ajouterPointCarte(latlng) {
+    const { pts } = routePoints();
+    const toks = routeJetons();
+    const tok = fmtCoord(latlng.lat, latlng.lng);
+    if (pts.length < 2) { toks.push(tok); ecrireJetons(toks); dessinerOFM(); return; }
+    // insertion dans la branche la plus proche du point touché
+    const P = ofm.latLngToLayerPoint(latlng);
+    let best = 0, dmin = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = ofm.latLngToLayerPoint([pts[i].lat, pts[i].lon]), b = ofm.latLngToLayerPoint([pts[i + 1].lat, pts[i + 1].lon]);
+      const d = L.LineUtil.pointToSegmentDistance(P, a, b);
+      if (d < dmin) { dmin = d; best = i; }
+    }
+    toks.splice(pts[best + 1].jeton, 0, tok);
+    ecrireJetons(toks);
+    dessinerOFM();
+  }
+
   function dessinerRoute(bornes) {
     const { pts, inconnus } = routePoints();
     const info = $("#ofmRouteInfo");
-    if (!pts.length) { info.innerHTML = inconnus.length ? `⚠ Inconnu : ${esc(inconnus.join(", "))}` : ""; return; }
+    if (!pts.length) { info.innerHTML = inconnus.length ? `⚠ Inconnu : ${esc(inconnus.join(", "))}` : (editionRoute ? "Touchez la carte pour poser le premier point." : ""); return; }
     if (pts.length > 1) {
-      L.polyline(pts.map((p) => [p.lat, p.lon]), { color: "#d81b60", weight: 4, opacity: 0.9, interactive: false }).addTo(ofmCouche);
+      L.polyline(pts.map((p) => [p.lat, p.lon]), { color: "#d81b60", weight: 4, opacity: 0.9, interactive: false, dashArray: editionRoute ? "10 6" : null }).addTo(ofmCouche);
     }
-    pts.forEach((p) => {
-      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html: `<span class="ofm-wpt">${esc(p.nom)}</span>`, iconSize: null, iconAnchor: [-6, 10] }), interactive: false }).addTo(ofmCouche);
-      L.circleMarker([p.lat, p.lon], { radius: 5, color: "#fff", weight: 2, fillColor: "#d81b60", fillOpacity: 1, interactive: false }).addTo(ofmCouche);
+    pts.forEach((p, i) => {
+      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html: `<span class="ofm-wpt">${esc(p.nom)}</span>`, iconSize: null, iconAnchor: [-8, 10] }), interactive: false }).addTo(ofmCouche);
+      const extremite = i === 0 || i === pts.length - 1;
+      if (editionRoute) {
+        const m = L.marker([p.lat, p.lon], {
+          draggable: true, zIndexOffset: 2000,
+          icon: L.divIcon({ className: "", html: `<span class="ofm-poignee${extremite ? " ext" : ""}"></span>`, iconSize: [26, 26], iconAnchor: [13, 13] })
+        }).addTo(ofmCouche);
+        m.on("dragend", () => {
+          const ll = m.getLatLng();
+          const toks = routeJetons();
+          toks[p.jeton] = fmtCoord(ll.lat, ll.lng);
+          ecrireJetons(toks); dessinerOFM();
+        });
+        m.on("click", () => {
+          if (!confirm(`Supprimer le point ${p.nom} de la route ?`)) return;
+          const toks = routeJetons();
+          toks.splice(p.jeton, 1);
+          ecrireJetons(toks); dessinerOFM();
+        });
+      } else {
+        L.circleMarker([p.lat, p.lon], { radius: 5, color: "#fff", weight: 2, fillColor: "#d81b60", fillOpacity: 1, interactive: false }).addTo(ofmCouche);
+      }
       bornes.push([p.lat, p.lon]);
     });
     let total = 0;
@@ -600,7 +668,7 @@
         marqueursOFM[it.num] = m;
       });
     });
-    if (!dejaCadre && bornes.length) { ofm.fitBounds(bornes, { padding: [30, 30], maxZoom: 10 }); dejaCadre = true; }
+    if (!dejaCadre && bornes.length && !editionRoute) { ofm.fitBounds(bornes, { padding: [30, 30], maxZoom: 10 }); dejaCadre = true; }
     setTimeout(() => ofm.invalidateSize(), 50);
   }
 
