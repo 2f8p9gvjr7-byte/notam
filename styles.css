@@ -301,7 +301,8 @@ h1 { white-space: nowrap; }
 .ofm-obst { display: block; }
 
 /* Mes zones */
-.zones-bloc { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; margin: 10px 0; padding: 0 12px; }
+.zones-bloc { background: var(--carte); border: 1px solid #8e24aa; border-radius: 12px; margin: 0 0 10px; padding: 0 12px; }
+#ofmBloc.plein ~ .zones-bloc, body:has(#ofmBloc.plein) .zones-bloc { display: none; }
 .zones-bloc summary { padding: 11px 0; font-weight: 700; cursor: pointer; color: var(--texte); }
 .zones-bloc[open] summary { border-bottom: 1px solid var(--bord); margin-bottom: 8px; }
 .zone-ligne { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--bord); }

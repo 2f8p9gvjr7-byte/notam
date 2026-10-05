@@ -3,7 +3,7 @@
    ET APP_VERSION dans app.js. C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
 
-const VERSION = "3.6";
+const VERSION = "3.7";
 const CACHE = "qcode-v" + VERSION;
 const CACHE_TUILES = "qcode-tuiles"; // conservé d'une version à l'autre
 const TUILES = ["tile.openstreetmap.org", "nwy-tiles-api.prod.newaydata.com"];
