@@ -982,7 +982,14 @@ function trierBriefing(texte, depart, dureeMin, altMax) {
     const traficBrut = ((n.champs.Q || "").split("/")[2] || "").trim();
 
     if (q && (q.sujet === "KK" || traficBrut === "K")) { res.ecarter.checklist.push(n); continue; }
-    if (q && q.etat === "TT") { res.ecarter.tt.push(n); continue; }
+    if (q && q.etat === "TT") {
+      // Déclencheur de SUP AIP. Si le texte dit que la zone ne s'active QUE par NOTAM, il ne change rien
+      // tant qu'aucun NOTAM d'activation n'existe → écarté. Sinon (ex. « activation possible tous les jours
+      // SR-SS », activité donnée à la radio), la zone peut être active sans autre NOTAM → à lire.
+      const Es = majSansAccent(E);
+      if (/ACTIV[A-Z]*\b[^.]{0,100}?PAR\s+NOTAM|ACTIVAT[A-Z]*\b[^.]{0,100}?BY\s+NOTAM/.test(Es)) { res.ecarter.tt.push(n); continue; }
+      n.alerteSup = "⚠ Déclencheur de SUP AIP sans activation par NOTAM : la zone peut être active selon les horaires du SUP AIP lui-même (activité souvent donnée à la radio). Lisez le SUP AIP.";
+    }
     if (q && (traficBrut === "I" || IFR_SEUL_SUJETS.has(q.sujet))) { res.ecarter.ifr.push(n); continue; }
 
     const bas = parseInt(((n.champs.Q || "").split("/")[5] || "").trim(), 10);

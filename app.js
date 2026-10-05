@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "3.4";
+const APP_VERSION = "3.5";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -285,7 +285,8 @@ function htmlNotamCourtInterne(n, idx, raison) {
   const f = q ? q.sujet[0] : "";
   const titre = q ? `${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt.charAt(0).toLowerCase() + q.etatTxt.slice(1) : ""}` : "Code non lu";
   let quand = "";
-  if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
+  if (n.alerteSup) quand = n.alerteSup;
+  else if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
   else if (n.pendantVol && n.pendantVol.length) {
     const [a, b] = [n.pendantVol[0][0], n.pendantVol[n.pendantVol.length - 1][1]];
     const toutLeVol = n.pendantVol.length === 1 && a <= trier.t1 && b >= trier.t2;
@@ -505,7 +506,8 @@ function htmlLecture() {
     const q = n.q && !n.q.erreur ? n.q : null;
     const f = q ? q.sujet[0] : "";
     let quand = "";
-    if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
+    if (n.alerteSup) quand = n.alerteSup;
+    else if (n.pendantVol === null) quand = "⚠ Dates non trouvées : à vérifier";
     else if (n.pendantVol && n.pendantVol.length) {
       const tout = n.pendantVol.length === 1 && n.pendantVol[0][0] <= t1 && n.pendantVol[0][1] >= t2;
       quand = tout ? "En vigueur pendant tout le vol" : "En vigueur " + n.pendantVol.map(([a, b]) => `${fHeure(a)} → ${fHeure(b)}`).join(", ");
@@ -627,7 +629,8 @@ function construirePDF() {
     ecrire(`${i + 1}. ${n.id || "NOTAM"}   ·   ${n.champs.A || ""}   ·   ${q ? q.code : ""}`, { taille: 11, gras: true });
     if (q) ecrire(`${q.sujetTxt}${q.etatTxt ? " — " + q.etatTxt : ""}`, { taille: 10, gras: true, couleur: [60, 60, 60] });
     if (n.groupe !== "garder") ecrire(`Ajouté manuellement (tri : ${RAISONS[n.groupe] || "écarté"})`, { taille: 9, couleur: [90, 90, 90] });
-    if (n.pendantVol === null) ecrire("Dates non trouvées : à vérifier", { taille: 9.5, couleur: [180, 0, 0] });
+    if (n.alerteSup) ecrire(n.alerteSup.replace("⚠ ", "ATTENTION : "), { taille: 9.5, gras: true, couleur: [180, 0, 0] });
+    else if (n.pendantVol === null) ecrire("Dates non trouvées : à vérifier", { taille: 9.5, couleur: [180, 0, 0] });
     else if (n.pendantVol && n.pendantVol.length) {
       const tout = n.pendantVol.length === 1 && n.pendantVol[0][0] <= t1 && n.pendantVol[0][1] >= t2;
       ecrire(tout ? "En vigueur pendant tout le vol" : "En vigueur pendant le vol : " + n.pendantVol.map(([a, b]) => `${fHeure(a)} -> ${fHeure(b)}`).join(", "), { taille: 9.5, gras: true, couleur: [200, 90, 0] });

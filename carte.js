@@ -319,6 +319,7 @@
 
   /* ---------- Liste sous la carte ---------- */
   function quand(n) {
+    if (n.alerteSup) return "SUP AIP : horaires à lire";
     if (n.pendantVol === null) return "dates à vérifier";
     if (!n.pendantVol || !n.pendantVol.length) return "";
     const t1 = typeof trier !== "undefined" ? trier.t1 : 0, t2 = typeof trier !== "undefined" ? trier.t2 : 0;
