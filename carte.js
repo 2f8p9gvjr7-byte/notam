@@ -217,13 +217,20 @@
     }
     return { px, cercle, txt };
   }
-  const ROSE = "#d81b60";
+  const ROSE = "#111"; // tracé de route sur les captures : noir bordé de blanc, distinct des zones et NOTAM rouges
   function routeSVG(svg, T) {
     const r = routeCapture();
     if (!r) return;
     const g = el("g", { "pointer-events": "none" }, svg);
-    if (r.cercle) el("circle", { cx: r.cercle.x, cy: r.cercle.y, r: r.cercle.r, fill: ROSE, "fill-opacity": 0.05, stroke: ROSE, "stroke-width": T.trait, "stroke-dasharray": `${T.trait * 4} ${T.trait * 3}` }, g);
-    if (r.px.length > 1) el("polyline", { points: r.px.map((q) => `${q.x},${q.y}`).join(" "), fill: "none", stroke: ROSE, "stroke-width": T.trait * 1.3, "stroke-linejoin": "round", opacity: 0.9 }, g);
+    if (r.cercle) {
+      el("circle", { cx: r.cercle.x, cy: r.cercle.y, r: r.cercle.r, fill: "none", stroke: "#fff", "stroke-width": T.trait * 2.2 }, g);
+      el("circle", { cx: r.cercle.x, cy: r.cercle.y, r: r.cercle.r, fill: "none", stroke: ROSE, "stroke-width": T.trait, "stroke-dasharray": `${T.trait * 4} ${T.trait * 3}` }, g);
+    }
+    if (r.px.length > 1) {
+      const pts = r.px.map((q) => `${q.x},${q.y}`).join(" ");
+      el("polyline", { points: pts, fill: "none", stroke: "#fff", "stroke-width": T.trait * 3, "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+      el("polyline", { points: pts, fill: "none", stroke: ROSE, "stroke-width": T.trait * 1.4, "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+    }
     r.px.forEach((q) => {
       el("circle", { cx: q.x, cy: q.y, r: T.croix * 0.55, fill: ROSE, stroke: "#fff", "stroke-width": T.trait * 0.6 }, g);
       const t = el("text", { x: q.x + T.croix * 0.9, y: q.y - T.croix * 0.6, "font-size": T.police * 0.9, "font-weight": "700", "font-family": "Helvetica, Arial, sans-serif", fill: ROSE, stroke: "#fff", "stroke-width": T.trait * 0.8, "paint-order": "stroke" }, g);
@@ -236,11 +243,16 @@
     ctx.save();
     ctx.strokeStyle = ROSE; ctx.fillStyle = ROSE;
     if (r.cercle) {
-      ctx.lineWidth = T.trait; ctx.setLineDash([T.trait * 4, T.trait * 3]);
-      ctx.beginPath(); ctx.arc(r.cercle.x, r.cercle.y, r.cercle.r, 0, 2 * Math.PI); ctx.stroke();
-      ctx.globalAlpha = 0.05; ctx.fill(); ctx.globalAlpha = 1; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(r.cercle.x, r.cercle.y, r.cercle.r, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = T.trait * 2.2; ctx.stroke();
+      ctx.strokeStyle = ROSE; ctx.lineWidth = T.trait; ctx.setLineDash([T.trait * 4, T.trait * 3]); ctx.stroke(); ctx.setLineDash([]);
     }
-    if (r.px.length > 1) { ctx.lineWidth = T.trait * 1.3; ctx.lineJoin = "round"; ctx.globalAlpha = 0.9; ctx.beginPath(); r.px.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (r.px.length > 1) {
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath(); r.px.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = T.trait * 3; ctx.stroke();
+      ctx.strokeStyle = ROSE; ctx.lineWidth = T.trait * 1.4; ctx.stroke();
+    }
     ctx.font = `bold ${T.police * 0.9}px Helvetica, Arial, sans-serif`; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     r.px.forEach((q) => {
       ctx.beginPath(); ctx.arc(q.x, q.y, T.croix * 0.55, 0, 2 * Math.PI); ctx.fillStyle = ROSE; ctx.fill(); ctx.lineWidth = T.trait * 0.6; ctx.strokeStyle = "#fff"; ctx.stroke();
@@ -408,7 +420,7 @@
     afficherListe();
     const info = $("#cInfo");
     if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Trier</b>.</p>`;
-    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en rose." : ""}</p>`;
+    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en noir." : ""}</p>`;
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
     $("#cCercles").hidden = !(image && cal);
