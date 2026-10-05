@@ -261,6 +261,235 @@
     ctx.restore();
     return r.txt;
   }
+
+  /* ---------- Mes zones : zones dessinées par l'utilisateur (ex. ZRT d'un SUP AIP) ----------
+     Stockées sur le téléphone, modifiables et supprimables. Les limites latérales se collent
+     telles quelles depuis le SUP AIP (coordonnées, arcs, cercles) ou se dessinent sur la carte. */
+  let zones = [];
+  try { zones = JSON.parse(localStorage.getItem("cZones") || "[]"); } catch (e) { zones = []; }
+  const sauverZones = () => { try { localStorage.setItem("cZones", JSON.stringify(zones)); } catch (e) {} };
+  let dessinZone = false;          // toucher la carte ajoute un point à la zone en cours d'édition
+  let zoneEditee = null;           // id de la zone ouverte dans le formulaire (ou "nouvelle")
+  const COULEURS_ZONE = ["#8e24aa", "#e65100", "#c62828", "#1565c0", "#2e7d32", "#5d4037"];
+
+  const sansAcc = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
+  const RE_DMS = /(\d{1,2})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([NS])\s*[,;/\-]?\s*(\d{1,3})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([EW])/g;
+  const RE_COMPACT = /(\d{2})(\d{2})(\d{2}(?:[.,]\d+)?)\s*([NS])\s*[,;/\-]?\s*(\d{3})(\d{2})(\d{2}(?:[.,]\d+)?)\s*([EW])/g;
+  const RE_DM = /(\d{2})(\d{2}(?:[.,]\d+)?)\s*([NS])\s*[,;/\-]?\s*(\d{3})(\d{2}(?:[.,]\d+)?)\s*([EW])/g;
+  function coordsZone(T) {
+    const res = [];
+    const pris = [];
+    const ajouter = (m, lat, lon) => {
+      const a = m.index, b = m.index + m[0].length;
+      if (pris.some(([x, y]) => a < y && b > x)) return;
+      pris.push([a, b]); res.push({ a, b, lat, lon });
+    };
+    const num = (v) => parseFloat(String(v || 0).replace(",", "."));
+    let m;
+    RE_DMS.lastIndex = 0;
+    while ((m = RE_DMS.exec(T))) ajouter(m, (+m[1] + +m[2] / 60 + num(m[3]) / 3600) * (m[4] === "S" ? -1 : 1), (+m[5] + +m[6] / 60 + num(m[7]) / 3600) * (m[8] === "W" ? -1 : 1));
+    RE_COMPACT.lastIndex = 0;
+    while ((m = RE_COMPACT.exec(T))) ajouter(m, (+m[1] + +m[2] / 60 + num(m[3]) / 3600) * (m[4] === "S" ? -1 : 1), (+m[5] + +m[6] / 60 + num(m[7]) / 3600) * (m[8] === "W" ? -1 : 1));
+    RE_DM.lastIndex = 0;
+    while ((m = RE_DM.exec(T))) ajouter(m, (+m[1] + num(m[2]) / 60) * (m[3] === "S" ? -1 : 1), (+m[4] + num(m[5]) / 60) * (m[6] === "W" ? -1 : 1));
+    return res.sort((x, y) => x.a - y.a);
+  }
+  /* Texte des limites latérales → liste de points (arcs et cercles convertis en segments) */
+  function geometrieZone(texte) {
+    const T = sansAcc(texte || "");
+    const cs = coordsZone(T);
+    if (!cs.length) return { pts: [], erreur: "Aucune coordonnée reconnue." };
+    const elts = [];
+    cs.forEach((c, i) => {
+      const avant = T.slice(i ? cs[i - 1].b : 0, c.a);
+      const apres = T.slice(c.b, i + 1 < cs.length ? cs[i + 1].a : T.length);
+      if (/CENT(R|ER)/.test(avant)) {
+        const rm = (avant.match(/(\d+(?:[.,]\d+)?)\s*(?:NM|MN)/) || apres.match(/(\d+(?:[.,]\d+)?)\s*(?:NM|MN)/) || [])[1];
+        const sens = avant + " " + apres.split(/\d{2}\s*°|\d{6}/)[0];
+        const ccw = /ANTI|COUNTER|INVERSE/.test(sens);
+        const cercle = /CERCLE|CIRCLE/.test(avant) && !/ARC/.test(avant);
+        elts.push({ type: cercle ? "cercle" : "arc", lat: c.lat, lon: c.lon, r: rm ? parseFloat(rm.replace(",", ".")) : null, cw: !ccw });
+      } else elts.push({ type: "pt", lat: c.lat, lon: c.lon });
+    });
+    const cercle = elts.find((e) => e.type === "cercle");
+    if (cercle && elts.filter((e) => e.type === "pt").length === 0) {
+      if (!cercle.r) return { pts: [], erreur: "Rayon du cercle non trouvé." };
+      const pts = [];
+      for (let k = 0; k < 72; k++) pts.push(pointA(cercle, cercle.r, k * 5));
+      return { pts };
+    }
+    const pts = [];
+    elts.forEach((e, i) => {
+      if (e.type === "pt") { pts.push({ lat: e.lat, lon: e.lon }); return; }
+      const P = pts[pts.length - 1];
+      let Q = null;
+      for (let j = i + 1; j < elts.length; j++) if (elts[j].type === "pt") { Q = elts[j]; break; }
+      if (!Q) Q = elts.find((x) => x.type === "pt");
+      if (!P || !Q) return;
+      const d1 = distCap(e, P), d2 = distCap(e, Q);
+      let b1 = d1.cap, b2 = d2.cap;
+      if (e.cw) { if (b2 <= b1) b2 += 360; } else { if (b2 >= b1) b2 -= 360; }
+      const n = Math.max(2, Math.ceil(Math.abs(b2 - b1) / 4));
+      for (let k = 1; k < n; k++) {
+        const t = k / n;
+        pts.push(pointA(e, d1.nm + (d2.nm - d1.nm) * t, b1 + (b2 - b1) * t));
+      }
+    });
+    if (pts.length < 3) return { pts, erreur: "Il faut au moins 3 points pour une zone." };
+    return { pts };
+  }
+  function pointA(c, nm, capDeg) {
+    const R = Math.PI / 180, d = (nm * 1.852) / 6371, b = capDeg * R, f1 = c.lat * R, l1 = c.lon * R;
+    const f2 = Math.asin(Math.sin(f1) * Math.cos(d) + Math.cos(f1) * Math.sin(d) * Math.cos(b));
+    const l2 = l1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(f1), Math.cos(d) - Math.sin(f1) * Math.sin(f2));
+    return { lat: f2 / R, lon: l2 / R };
+  }
+  const geoCache = {};
+  function geoZone(z) {
+    const k = z.texte;
+    if (!geoCache[k]) geoCache[k] = geometrieZone(z.texte);
+    return geoCache[k];
+  }
+  function popupZone(z) {
+    return `<div class="ofm-pop"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? `<br><small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<div class="ofm-e">${esc(z.note)}</div>` : ""}<small class="ofm-approx">Zone ajoutée par vous (Mes zones).</small></div>`;
+  }
+  /* Dessin sur la carte OFM */
+  function zonesOFM() {
+    const liste = zones.filter((z) => z.visible !== false);
+    const enCours = zoneEditee ? lireFormZone() : null;
+    liste.forEach((z) => {
+      if (enCours && z.id === zoneEditee) return;
+      const g = geoZone(z);
+      if (g.pts.length < 3) return;
+      const pol = L.polygon(g.pts.map((p) => [p.lat, p.lon]), { color: z.couleur, weight: 2.5, dashArray: "8 5", fillColor: z.couleur, fillOpacity: 0.12, interactive: !editionRoute && !dessinZone });
+      pol.bindPopup(popupZone(z), { maxWidth: 260 }).addTo(ofmCouche);
+      if (z.nom) L.marker(pol.getBounds().getCenter(), { icon: L.divIcon({ className: "", html: `<span class="zone-nom" style="color:${z.couleur}">${esc(z.nom)}</span>`, iconSize: null, iconAnchor: [0, 0] }), interactive: false }).addTo(ofmCouche);
+    });
+    if (enCours) {
+      const g = geometrieZone(enCours.texte);
+      if (g.pts.length >= 2) L.polygon(g.pts.map((p) => [p.lat, p.lon]), { color: enCours.couleur, weight: 3, fillColor: enCours.couleur, fillOpacity: 0.18, interactive: false }).addTo(ofmCouche);
+      coordsZone(sansAcc(enCours.texte)).forEach((c) => L.circleMarker([c.lat, c.lon], { radius: 4, color: "#fff", weight: 2, fillColor: enCours.couleur, fillOpacity: 1, interactive: false }).addTo(ofmCouche));
+    }
+  }
+  /* Dessin sur les captures calées (SVG à l'écran et image partagée) */
+  function zonesPx() {
+    if (!cal) return [];
+    return zones.filter((z) => z.visible !== false).map((z) => {
+      const g = geoZone(z);
+      return g.pts.length >= 3 ? { z, p: g.pts.map((q) => proj(q.lat, q.lon)) } : null;
+    }).filter(Boolean);
+  }
+  function zonesSVG(svg, T) {
+    zonesPx().forEach(({ z, p }) => {
+      el("polygon", { points: p.map((q) => `${q.x},${q.y}`).join(" "), fill: z.couleur, "fill-opacity": 0.12, stroke: z.couleur, "stroke-width": T.trait * 1.1, "stroke-dasharray": `${T.trait * 4} ${T.trait * 2.5}`, "pointer-events": "none" }, svg);
+      if (z.nom) {
+        const cx = p.reduce((s, q) => s + q.x, 0) / p.length, cy = p.reduce((s, q) => s + q.y, 0) / p.length;
+        const t = el("text", { x: cx, y: cy, "text-anchor": "middle", "font-size": T.police * 0.85, "font-weight": "700", "font-family": "Helvetica, Arial, sans-serif", fill: z.couleur, stroke: "#fff", "stroke-width": T.trait * 0.8, "paint-order": "stroke", "pointer-events": "none" }, svg);
+        t.textContent = z.nom;
+      }
+    });
+  }
+  function zonesCanvas(ctx, T) {
+    zonesPx().forEach(({ z, p }) => {
+      ctx.save();
+      ctx.beginPath(); p.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath();
+      ctx.globalAlpha = 0.12; ctx.fillStyle = z.couleur; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.setLineDash([T.trait * 4, T.trait * 2.5]); ctx.lineWidth = T.trait * 1.1; ctx.strokeStyle = z.couleur; ctx.stroke(); ctx.setLineDash([]);
+      if (z.nom) {
+        const cx = p.reduce((s, q) => s + q.x, 0) / p.length, cy = p.reduce((s, q) => s + q.y, 0) / p.length;
+        ctx.font = `bold ${T.police * 0.85}px Helvetica, Arial, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.lineWidth = T.trait * 0.8; ctx.strokeStyle = "#fff"; ctx.strokeText(z.nom, cx, cy); ctx.fillStyle = z.couleur; ctx.fillText(z.nom, cx, cy);
+      }
+      ctx.restore();
+    });
+  }
+
+  /* Panneau « Mes zones » */
+  function lireFormZone() {
+    const f = (id) => { const e = document.getElementById(id); return e ? e.value : ""; };
+    return { nom: f("zNom").trim(), bas: f("zBas").trim(), haut: f("zHaut").trim(), note: f("zNote").trim(), texte: f("zTexte"), couleur: f("zCouleur") || COULEURS_ZONE[0] };
+  }
+  function afficherZones() {
+    const p = document.getElementById("zonesPanneau");
+    if (!p) return;
+    document.getElementById("zonesNb").textContent = zones.length ? `(${zones.length})` : "";
+    if (zoneEditee) {
+      const z = zoneEditee === "nouvelle" ? { nom: "", bas: "", haut: "", note: "", texte: "", couleur: COULEURS_ZONE[zones.length % COULEURS_ZONE.length] } : zones.find((x) => x.id === zoneEditee);
+      const g = geometrieZone(z.texte);
+      p.innerHTML = `<div class="zone-form">
+        <label>Nom <input id="zNom" value="${esc(z.nom)}" placeholder="ZRT OCHEY"></label>
+        <div class="zone-lim"><label>Plancher <input id="zBas" value="${esc(z.bas)}" placeholder="SFC"></label><label>Plafond <input id="zHaut" value="${esc(z.haut)}" placeholder="3600 ft AMSL"></label></div>
+        <label>Remarque <input id="zNote" value="${esc(z.note)}" placeholder="Active SR-SS · Ochey Info 122.10"></label>
+        <label>Limites latérales <small>(collez le texte du SUP AIP : coordonnées, arcs, cercles — ou touchez « ✏️ Dessiner »)</small>
+          <textarea id="zTexte" rows="6" spellcheck="false" placeholder="48°39'44&quot;N, 005°54'58&quot;E&#10;48°45'00&quot;N, 005°57'32&quot;E&#10;Clockwise arc of 10 NM radius centered on 48°34'59&quot;N, 005°57'16&quot;E&#10;48°43'07&quot;N, 006°06'07&quot;E …">${esc(z.texte)}</textarea></label>
+        <div class="zone-etat ${g.erreur ? "warn" : ""}">${g.erreur ? "⚠ " + esc(g.erreur) : `✓ ${coordsZone(sansAcc(z.texte)).length} coordonnées lues · forme de ${g.pts.length} points`}</div>
+        <div class="zone-couleurs">${COULEURS_ZONE.map((c) => `<button class="pastille${c === z.couleur ? " on" : ""}" data-couleur="${c}" style="background:${c}" aria-label="Couleur"></button>`).join("")}<input id="zCouleur" type="hidden" value="${z.couleur}"></div>
+        <div class="zone-actions">
+          <button id="zDessiner" class="${dessinZone ? "on" : ""}">✏️ ${dessinZone ? "Fin du dessin" : "Dessiner"}</button>
+          <button id="zApercu">👁 Aperçu</button>
+          <button id="zOk" class="principal">✓ Enregistrer</button>
+          <button id="zAnnuler">Annuler</button>
+        </div>
+        <p class="note">Vérifiez la forme sur la carte avec le SUP AIP : c'est une aide visuelle, pas une donnée officielle.</p>
+      </div>`;
+      $("#zTexte").addEventListener("input", () => { const g2 = geometrieZone($("#zTexte").value); const e = $(".zone-etat"); e.className = "zone-etat" + (g2.erreur ? " warn" : ""); e.textContent = g2.erreur ? "⚠ " + g2.erreur : `✓ ${coordsZone(sansAcc($("#zTexte").value)).length} coordonnées lues · forme de ${g2.pts.length} points`; });
+      p.querySelectorAll(".pastille").forEach((b) => b.addEventListener("click", () => { $("#zCouleur").value = b.dataset.couleur; p.querySelectorAll(".pastille").forEach((x) => x.classList.toggle("on", x === b)); }));
+      $("#zApercu").addEventListener("click", () => { voirZone(lireFormZone()); });
+      $("#zDessiner").addEventListener("click", () => {
+        dessinZone = !dessinZone;
+        if (dessinZone && editionRoute) basculerEdition();
+        if (dessinZone) { if (mode !== "ofm") choisirMode("ofm"); toast("Touchez la carte pour poser les points de la zone, dans l'ordre", 4000); }
+        const v = lireFormZone(); afficherZones(); remplirForm(v); rafraichir();
+      });
+      $("#zOk").addEventListener("click", () => {
+        const v = lireFormZone();
+        const g2 = geometrieZone(v.texte);
+        if (g2.erreur) { toast("Zone non enregistrée : " + g2.erreur, 4000); return; }
+        if (zoneEditee === "nouvelle") zones.push(Object.assign({ id: "z" + Date.now(), visible: true }, v));
+        else Object.assign(zones.find((x) => x.id === zoneEditee), v);
+        sauverZones(); zoneEditee = null; dessinZone = false; afficherZones(); rafraichir();
+        toast("Zone enregistrée ✓", 2000);
+      });
+      $("#zAnnuler").addEventListener("click", () => { zoneEditee = null; dessinZone = false; afficherZones(); rafraichir(); });
+      return;
+    }
+    p.innerHTML = (zones.length ? zones.map((z) => `<div class="zone-ligne${z.visible === false ? " cachee" : ""}" data-id="${z.id}">
+        <span class="pastille" style="background:${z.couleur}"></span>
+        <div class="zone-txt"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? ` <small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<br><small>${esc(z.note)}</small>` : ""}</div>
+        <button data-act="voir" title="Centrer">🎯</button>
+        <button data-act="masquer" title="Afficher / masquer">${z.visible === false ? "🚫" : "👁"}</button>
+        <button data-act="modifier" title="Modifier">✎</button>
+        <button data-act="suppr" title="Supprimer">🗑</button>
+      </div>`).join("") : `<p class="note">Aucune zone. Ajoutez par exemple une ZRT d'un SUP AIP : elle s'affichera sur la carte OFM et sur vos captures calées.</p>`)
+      + `<button id="zAjouter" class="zone-ajouter">＋ Ajouter une zone</button>`;
+    $("#zAjouter").addEventListener("click", () => { zoneEditee = "nouvelle"; afficherZones(); });
+    p.querySelectorAll(".zone-ligne button").forEach((b) => b.addEventListener("click", () => {
+      const id = b.closest(".zone-ligne").dataset.id, z = zones.find((x) => x.id === id);
+      const act = b.dataset.act;
+      if (act === "voir") { if (z.visible === false) { z.visible = true; sauverZones(); } afficherZones(); voirZone(z); }
+      if (act === "masquer") { z.visible = z.visible === false; sauverZones(); afficherZones(); rafraichir(); }
+      if (act === "modifier") { zoneEditee = id; afficherZones(); rafraichir(); }
+      if (act === "suppr" && confirm(`Supprimer la zone « ${z.nom || "Zone"} » ?`)) { zones = zones.filter((x) => x.id !== id); sauverZones(); afficherZones(); rafraichir(); }
+    }));
+  }
+  function remplirForm(v) {
+    ["zNom", "zBas", "zHaut", "zNote", "zTexte", "zCouleur"].forEach((id) => { const e = document.getElementById(id); if (e) e.value = v[{ zNom: "nom", zBas: "bas", zHaut: "haut", zNote: "note", zTexte: "texte", zCouleur: "couleur" }[id]]; });
+    const t = document.getElementById("zTexte"); if (t) t.dispatchEvent(new Event("input"));
+    document.querySelectorAll("#zonesPanneau .pastille").forEach((x) => x.classList.toggle("on", x.dataset.couleur === v.couleur));
+  }
+  function voirZone(z) {
+    const g = geometrieZone(z.texte);
+    if (mode !== "ofm") { rafraichir(); return; }
+    rafraichir();
+    if (ofm && g.pts.length >= 2) ofm.fitBounds(g.pts.map((p) => [p.lat, p.lon]), { padding: [30, 30], maxZoom: 11 });
+  }
+  function ajouterPointZone(latlng) {
+    const t = $("#zTexte");
+    if (!t) return;
+    t.value = (t.value.trim() ? t.value.trim() + "\n" : "") + fmtCoord(latlng.lat, latlng.lng);
+    t.dispatchEvent(new Event("input"));
+    rafraichir();
+  }
   /* ---------- Dessin à l'écran (SVG) ---------- */
   function tailles() {
     const base = Math.max(nat.w, nat.h) / 100;
@@ -286,6 +515,7 @@
     (cal ? cal.pts : ptsCal).forEach((p) => croixCal(p.x, p.y, "#111"));
     if (tmp) croixCal(tmp.x, tmp.y, "#e53935");
     if (!cal) return;
+    zonesSVG(svg, T);
     routeSVG(svg, T);
     // NOTAM
     items.forEach((it) => { it.px = enPixels(it); });
@@ -538,6 +768,7 @@
     const hLeg = Math.round(police * 1.2 + ligneH * (nbLignes + 3.2));
     cv.width = nat.w; cv.height = nat.h + hLeg;
     ctx.drawImage(image, 0, 0);
+    zonesCanvas(ctx, T);
     const txtRoute = routeCanvas(ctx, T);
     // repères
     items.forEach((it) => {
@@ -638,7 +869,7 @@
     ofm.addControl(new Boutons());
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
-    ofm.on("click", (e) => { if (editionRoute) ajouterPointCarte(e.latlng); });
+    ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
     $("#ofmCercles").addEventListener("click", (e) => {
       e.preventDefault();
       masquerCercles = !masquerCercles;
@@ -722,6 +953,7 @@
   let editionRoute = false;
   function basculerEdition() {
     editionRoute = !editionRoute;
+    if (editionRoute && dessinZone) { dessinZone = false; const v = lireFormZone(); afficherZones(); remplirForm(v); }
     const b = $("#ofmEditer");
     if (b) b.classList.toggle("on", editionRoute);
     $("#ofmMap").classList.toggle("edition", editionRoute);
@@ -836,6 +1068,7 @@
     ofmCouche.clearLayers();
     for (const k in marqueursOFM) delete marqueursOFM[k];
     const bornes = [];
+    zonesOFM();
     dessinerRoute(bornes);
     const groupes = {};
     items.forEach((it) => {
@@ -912,5 +1145,6 @@
   $("#captureBloc").hidden = mode !== "capture";
   $("#modeOfm").classList.toggle("actif", mode === "ofm");
   $("#modeCapture").classList.toggle("actif", mode === "capture");
+  afficherZones();
   lireImage().then((b) => { if (b) chargerBlob(b, false); else rafraichir(); });
 })();

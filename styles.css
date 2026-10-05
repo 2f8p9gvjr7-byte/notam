@@ -299,3 +299,27 @@ h1 { white-space: nowrap; }
 .etape-form .ou { color: var(--doux); font-size: 12px; text-align: center; margin: 6px 0 2px; }
 #cCercles.off { opacity: 0.5; text-decoration: line-through; }
 .ofm-obst { display: block; }
+
+/* Mes zones */
+.zones-bloc { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; margin: 10px 0; padding: 0 12px; }
+.zones-bloc summary { padding: 11px 0; font-weight: 700; cursor: pointer; color: var(--texte); }
+.zones-bloc[open] summary { border-bottom: 1px solid var(--bord); margin-bottom: 8px; }
+.zone-ligne { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--bord); }
+.zone-ligne.cachee { opacity: .5; }
+.zone-ligne .zone-txt { flex: 1; min-width: 0; font-size: 14px; }
+.zone-ligne .zone-txt small { color: var(--doux); }
+.zone-ligne button { background: transparent; border: 1px solid var(--bord); color: var(--texte); border-radius: 8px; padding: 5px 7px; font-size: 15px; }
+.pastille { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff3; flex: none; padding: 0; }
+.zone-ajouter { width: 100%; margin: 10px 0 12px; background: transparent; border: 1px dashed var(--orange); color: var(--orange); border-radius: 10px; padding: 9px; font-weight: 700; font-size: 14px; }
+.zone-form { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.zone-form label { font-size: 13px; color: var(--doux); display: flex; flex-direction: column; gap: 3px; }
+.zone-form input, .zone-form textarea { font: 16px var(--mono); background: var(--fond); color: var(--texte); border: 1px solid var(--bord); border-radius: 8px; padding: 7px 8px; width: 100%; box-sizing: border-box; }
+.zone-form textarea { min-height: 120px; font-size: 14px; }
+.zone-lim { display: flex; gap: 8px; } .zone-lim label { flex: 1; }
+.zone-etat { font-size: 13px; color: #7bd88f; } .zone-etat.warn { color: var(--orange); }
+.zone-couleurs { display: flex; gap: 10px; } .zone-couleurs .pastille { width: 26px; height: 26px; } .zone-couleurs .pastille.on { border-color: #fff; box-shadow: 0 0 0 2px var(--orange); }
+.zone-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.zone-actions button { flex: 1; background: transparent; border: 1px solid var(--bord); color: var(--texte); border-radius: 9px; padding: 8px 6px; font-size: 14px; }
+.zone-actions button.principal { background: var(--orange); color: #0d1526; border-color: var(--orange); font-weight: 700; }
+.zone-actions button.on { background: #8e24aa; border-color: #8e24aa; color: #fff; }
+.zone-nom { font: 700 12px Helvetica, Arial, sans-serif; white-space: nowrap; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; transform: translate(-50%, -50%); display: inline-block; }
