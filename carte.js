@@ -150,38 +150,53 @@
     return out;
   }
 
-  /* ---------- Étiquettes : écartées pour ne pas se chevaucher ---------- */
+  /* ---------- Étiquettes ----------
+     Les NOTAM au même endroit (à l'échelle de la capture) sont regroupés : leurs numéros
+     sont posés en couronne serrée autour du point, sans traits de rappel. Les NOTAM isolés
+     gardent une étiquette juste à côté, écartée des autres si besoin. */
   function placerEtiquettes() {
     const T = tailles();
+    const visibles = items.filter((it) => it.px && it.px.dedans);
+    // 1. regroupement par proximité des ancres
+    const groupes = [];
+    const seuil = T.etiq * 2.2;
+    visibles.forEach((it) => {
+      const a = it.px.ancre;
+      const g = groupes.find((g) => Math.hypot(g.x - a.x, g.y - a.y) < seuil);
+      if (g) { g.membres.push(it); g.x = g.membres.reduce((s, m) => s + m.px.ancre.x, 0) / g.membres.length; g.y = g.membres.reduce((s, m) => s + m.px.ancre.y, 0) / g.membres.length; }
+      else groupes.push({ x: a.x, y: a.y, membres: [it] });
+    });
     const pris = [];
-    const minD = T.etiq * 2.3;
-    const libre = (x, y) => pris.every((q) => Math.hypot(q.x - x, q.y - y) >= minD) &&
+    // 2. groupes : couronne serrée (les bulles se touchent presque)
+    groupes.filter((g) => g.membres.length > 1).forEach((g) => {
+      const n = g.membres.length;
+      const R = Math.max(T.etiq * 1.9, (T.etiq * 1.08) / Math.sin(Math.PI / n));
+      g.membres.forEach((it, k) => {
+        const ang = Math.PI / 2 - (k * 2 * Math.PI) / n;
+        it.etiq = { x: g.x + R * Math.cos(ang), y: g.y - R * Math.sin(ang), trait: false, groupe: g };
+        pris.push(it.etiq);
+      });
+    });
+    // 3. NOTAM isolés : étiquette en haut à droite, ou à la première place libre autour
+    const libre = (x, y) => pris.every((q) => Math.hypot(q.x - x, q.y - y) >= T.etiq * 2.1) &&
       x > T.etiq && x < nat.w - T.etiq && y > T.etiq && y < nat.h - T.etiq;
-    // les repères eux-mêmes (points, croix) sont aussi des obstacles pour les étiquettes
-    const marques = [];
-    items.forEach((it) => { if (it.px && it.px.dedans && (it.px.type === "point" || it.px.type === "croix")) it.px.p.forEach((q) => marques.push(q)); });
-    const loinDesMarques = (x, y) => marques.every((q) => Math.hypot(q.x - x, q.y - y) >= T.etiq * 1.6);
-    items.forEach((it) => {
-      const px = it.px;
-      if (!px || !px.dedans) return;
-      const a = px.ancre;
-      const d0 = T.etiq * 1.7;
+    groupes.filter((g) => g.membres.length === 1).forEach((g) => {
+      const it = g.membres[0], a = it.px.ancre;
+      const d0 = T.etiq * 1.6;
       let choix = null;
-      for (let anneau = 1; anneau <= 6 && !choix; anneau++) {
-        const d = d0 * anneau;
-        for (let k = 0; k < 12 && !choix; k++) {
-          const ang = -Math.PI / 4 + (k * Math.PI) / 6; // on commence en haut à droite
-          const x = a.x + d * Math.cos(ang), y = a.y - d * Math.sin(ang);
-          if (libre(x, y) && loinDesMarques(x, y)) choix = { x, y };
+      for (let anneau = 1; anneau <= 4 && !choix; anneau++) {
+        for (let k = 0; k < 8 && !choix; k++) {
+          const ang = Math.PI / 4 + (k * Math.PI) / 4;
+          const x = a.x + d0 * anneau * Math.cos(ang), y = a.y - d0 * anneau * Math.sin(ang);
+          if (libre(x, y)) choix = { x, y };
         }
       }
       if (!choix) choix = { x: a.x + d0 * 0.7, y: a.y - d0 * 0.7 };
-      choix.trait = Math.hypot(choix.x - a.x, choix.y - a.y) > d0 * 1.2;
+      choix.trait = Math.hypot(choix.x - a.x, choix.y - a.y) > d0 * 1.3;
       it.etiq = choix;
       pris.push(choix);
     });
   }
-
 
   /* ---------- Route tapée dans l'onglet Carte, reportée sur la capture ---------- */
   function routeCapture() {
@@ -237,7 +252,7 @@
   /* ---------- Dessin à l'écran (SVG) ---------- */
   function tailles() {
     const base = Math.max(nat.w, nat.h) / 100;
-    return { trait: base * 0.35, etiq: base * 1.5, police: base * 1.7, croix: base * 1.4 };
+    return { trait: base * 0.3, etiq: base * 1.3, police: base * 1.5, croix: base * 1.1 };
   }
   function el(nom, attrs, parent) {
     const e = document.createElementNS(NS, nom);
@@ -269,7 +284,7 @@
       const g = el("g", { "data-num": it.num, style: "cursor:pointer" }, svg);
       const c = it.couleur;
       if (px.type === "cercle") {
-        el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: px.r, fill: "none", stroke: c, "stroke-width": T.trait * 0.7, "stroke-dasharray": `${T.trait * 3} ${T.trait * 2.5}`, opacity: 0.85 }, g);
+        if (!masquerCercles) el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: px.r, fill: "none", stroke: c, "stroke-width": T.trait * 0.7, "stroke-dasharray": `${T.trait * 3} ${T.trait * 2.5}`, opacity: 0.85 }, g);
         el("circle", { cx: px.p[0].x, cy: px.p[0].y, r: T.trait * 1.3, fill: c }, g);
       }
       if (px.type === "poly") el("polygon", { points: px.p.map((q) => `${q.x},${q.y}`).join(" "), fill: c, "fill-opacity": 0.15, stroke: c, "stroke-width": T.trait }, g);
@@ -396,6 +411,8 @@
     else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en rose." : ""}</p>`;
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
+    $("#cCercles").hidden = !(image && cal);
+    $("#cCercles").classList.toggle("off", masquerCercles);
   }
   window.majCarte = rafraichir;
 
@@ -426,6 +443,13 @@
     e.target.value = "";
   });
   $("#cRecaler").addEventListener("click", demarrerCalage);
+  $("#cCercles").addEventListener("click", () => {
+    masquerCercles = !masquerCercles;
+    try { localStorage.setItem("cSansCercles", masquerCercles ? "1" : "0"); } catch (e) {}
+    if (typeof majBoutons === "function") majBoutons();
+    rafraichir();
+    toast(masquerCercles ? "Cercles indicatifs masqués" : "Cercles indicatifs affichés", 2000);
+  });
   function choisirSlot(sl) {
     slot = sl;
     try { localStorage.setItem("cSlot", sl); } catch (e) {}
@@ -505,8 +529,10 @@
       if (!px || !px.dedans) return;
       ctx.strokeStyle = it.couleur; ctx.fillStyle = it.couleur; ctx.lineWidth = T.trait;
       if (px.type === "cercle") {
-        ctx.save(); ctx.lineWidth = T.trait * 0.7; ctx.setLineDash([T.trait * 3, T.trait * 2.5]); ctx.globalAlpha = 0.85;
-        ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, px.r, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+        if (!masquerCercles) {
+          ctx.save(); ctx.lineWidth = T.trait * 0.7; ctx.setLineDash([T.trait * 3, T.trait * 2.5]); ctx.globalAlpha = 0.85;
+          ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, px.r, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
+        }
         ctx.beginPath(); ctx.arc(px.p[0].x, px.p[0].y, T.trait * 1.3, 0, 2 * Math.PI); ctx.fill();
       }
       if (px.type === "poly") { ctx.beginPath(); px.p.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.globalAlpha = 0.15; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); }
