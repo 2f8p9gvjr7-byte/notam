@@ -294,3 +294,6 @@ h1 { white-space: nowrap; }
 /* Vol local : choix du rayon */
 .ofm-rayon { background:#16213a; color:#f5a623; border:1px solid #2a3a5c; border-radius:6px; padding:2px 4px; font: 16px var(--mono); }
 .ligne-local { margin-top: 4px; }
+.bascule.petite button { padding: 6px 4px; font-size: 13px; }
+.etape-form input#cLieu { font: 16px var(--mono); background: var(--fond); color: var(--texte); border: 1px solid var(--bord); border-radius: 8px; padding: 6px 8px; width: 100%; box-sizing: border-box; margin-top: 4px; }
+.etape-form .ou { color: var(--doux); font-size: 12px; text-align: center; margin: 6px 0 2px; }

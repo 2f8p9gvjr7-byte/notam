@@ -15,6 +15,43 @@
   let ptsCal = [];             // points validés pendant le calage
   let items = [];              // NOTAM affichés (avec formes calculées)
 
+  /* Deux captures possibles : carte Bossy (calage sur le quadrillage) et carte AZBA (calage sur des lieux connus) */
+  let slot = "bossy";
+  try { slot = localStorage.getItem("cSlot") === "azba" ? "azba" : "bossy"; } catch (e) {}
+  const cleImage = () => (slot === "azba" ? "image_azba" : "image");
+  const cleCal = () => (slot === "azba" ? "cCal_azba" : "cCal");
+
+  /* Lieux connus pour caler une carte sans quadrillage (centre-ville, ±1 km) */
+  const LIEUX = {
+    "Nancy": [48.6921, 6.1844], "Metz": [49.1193, 6.1757], "Strasbourg": [48.5734, 7.7521], "Épinal": [48.1724, 6.4496],
+    "Colmar": [48.0794, 7.3585], "Mulhouse": [47.7508, 7.3359], "Belfort": [47.6380, 6.8628], "Besançon": [47.2378, 6.0241],
+    "Dijon": [47.3220, 5.0415], "Saint-Dié-des-Vosges": [48.2844, 6.9492], "Lunéville": [48.5894, 6.4964], "Toul": [48.6750, 5.8917],
+    "Vesoul": [47.6197, 6.1544], "Troyes": [48.2973, 4.0744], "Reims": [49.2583, 4.0317], "Chaumont": [48.1113, 5.1392],
+    "Neufchâteau": [48.3558, 5.6964], "Mirecourt": [48.2989, 6.1336], "Sarrebourg": [48.7356, 7.0539], "Saverne": [48.7414, 7.3625],
+    "Verdun": [49.1598, 5.3844], "Bar-le-Duc": [48.7727, 5.1600], "Gérardmer": [48.0731, 6.8778], "Remiremont": [48.0167, 6.5917],
+    "Sarrebruck": [49.2402, 6.9969], "Luxembourg": [49.6116, 6.1319], "Genève": [46.2044, 6.1432], "Lausanne": [46.5197, 6.6323],
+    "Bâle": [47.5596, 7.5886], "Fribourg-en-Brisgau": [47.9990, 7.8421], "Montbéliard": [47.5100, 6.7983], "Pontarlier": [46.9036, 6.3550],
+    "Lons-le-Saunier": [46.6744, 5.5547], "Chalon-sur-Saône": [46.7806, 4.8539], "Mâcon": [46.3069, 4.8287], "Langres": [47.8625, 5.3331],
+    "Châlons-en-Champagne": [48.9566, 4.3631], "Sedan": [49.7019, 4.9403], "Thionville": [49.3579, 6.1683], "Sarreguemines": [49.1100, 7.0683],
+    "Haguenau": [48.8156, 7.7906], "Pont-à-Mousson": [48.9053, 6.0547], "Commercy": [48.7631, 5.5917], "Lure": [47.6833, 6.4967],
+    "Thann": [47.8078, 7.1033], "Munster": [48.0408, 7.1347], "La Bresse": [48.0050, 6.8750], "Neuchâtel": [46.9900, 6.9293],
+    "Annecy": [45.8992, 6.1294], "Bourg-en-Bresse": [46.2052, 5.2255], "Beaune": [47.0260, 4.8400], "Dole": [47.0920, 5.4900],
+    "Vitry-le-François": [48.7248, 4.5847], "Saint-Avold": [49.1044, 6.7069], "Forbach": [49.1883, 6.8956], "Sélestat": [48.2594, 7.4542],
+    "Molsheim": [48.5422, 7.4922], "Obernai": [48.4622, 7.4819], "Rambervillers": [48.3450, 6.6347], "Baccarat": [48.4500, 6.7400],
+    "Vittel": [48.2017, 5.9461], "Contrexéville": [48.1833, 5.8961], "Raon-l'Étape": [48.4058, 6.8400], "Saint-Nicolas-de-Port": [48.6347, 6.3008]
+  };
+  const sansAccent = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  function trouverLieu(txt) {
+    const t = (txt || "").trim();
+    if (!t) return null;
+    const oaci = t.toUpperCase();
+    if (typeof AERODROMES !== "undefined" && AERODROMES[oaci]) return { lat: AERODROMES[oaci][0], lon: AERODROMES[oaci][1], nom: oaci };
+    const k = sansAccent(t);
+    for (const n in LIEUX) if (sansAccent(n) === k) return { lat: LIEUX[n][0], lon: LIEUX[n][1], nom: n };
+    for (const n in LIEUX) if (sansAccent(n).startsWith(k) && k.length >= 3) return { lat: LIEUX[n][0], lon: LIEUX[n][1], nom: n };
+    return null;
+  }
+
   /* ---------- Stockage de la capture (IndexedDB) ---------- */
   function ouvrirBase() {
     return new Promise((ok, ko) => {
@@ -25,13 +62,13 @@
     });
   }
   async function sauverImage(blob) {
-    try { const db = await ouvrirBase(); db.transaction("f", "readwrite").objectStore("f").put(blob, "image"); } catch (e) {}
+    try { const db = await ouvrirBase(); db.transaction("f", "readwrite").objectStore("f").put(blob, cleImage()); } catch (e) {}
   }
   async function lireImage() {
     try {
       const db = await ouvrirBase();
       return await new Promise((ok) => {
-        const q = db.transaction("f").objectStore("f").get("image");
+        const q = db.transaction("f").objectStore("f").get(cleImage());
         q.onsuccess = () => ok(q.result || null);
         q.onerror = () => ok(null);
       });
@@ -39,8 +76,8 @@
   }
   let rayonLocal = 20;
   try { rayonLocal = +localStorage.getItem("cRayonLocal") || 20; } catch (e) {}
-  function sauverCal() { try { localStorage.setItem("cCal", JSON.stringify(cal)); } catch (e) {} }
-  function lireCal() { try { return JSON.parse(localStorage.getItem("cCal") || "null"); } catch (e) { return null; } }
+  function sauverCal() { try { localStorage.setItem(cleCal(), JSON.stringify(cal)); } catch (e) {} }
+  function lireCal() { try { return JSON.parse(localStorage.getItem(cleCal()) || "null"); } catch (e) { return null; } }
 
   /* ---------- Projection (Web Mercator, nord en haut) ---------- */
   const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
@@ -287,20 +324,30 @@
   }
   function afficherEtape() {
     const z = $("#cEtape");
-    if (!image) { z.innerHTML = `<p class="aide">1. Dans CartaBossy, faites une <b>capture d'écran</b> de la zone du vol (nord en haut).<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur deux croisements du quadrillage.</p>`; return; }
+    if (!image) {
+      z.innerHTML = slot === "azba"
+        ? `<p class="aide">1. Sur le site <b>🗺 AZBA</b>, réglez la période (📅) sur <b>votre vol</b>, cadrez la région, et faites une <b>capture d'écran</b>.<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur <b>deux lieux connus éloignés</b> (ex. le point de Nancy puis celui de Besançon) : touchez le point de la ville, puis tapez son nom.</p>`
+        : `<p class="aide">1. Dans CartaBossy, faites une <b>capture d'écran</b> de la zone du vol (nord en haut).<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur deux croisements du quadrillage (ou deux lieux connus).</p>`;
+      return;
+    }
     if (!etape) {
       z.innerHTML = cal ? `<p class="note">Carte calée. Touchez un repère ou une ligne de la liste pour le détail.</p>` : "";
       return;
     }
     const def = etape === 1 ? { lat: 49, lon: 6 } : { lat: 48, lon: 7 };
     z.innerHTML = `<div class="etape">
-      <div class="etape-msg"><b>Calage ${etape}/2</b> — Touchez précisément un <b>croisement du quadrillage</b>${etape === 2 ? " <b>en diagonale</b> du premier" : ""}. Zoomez avec deux doigts si besoin ; touchez à nouveau pour corriger.</div>
+      <div class="etape-msg"><b>Calage ${etape}/2</b> — Touchez précisément ${slot === "azba" ? "le <b>point d'une ville</b> (ou d'un terrain)" : "un <b>croisement du quadrillage</b> (ou une ville / un terrain)"}${etape === 2 ? ", <b>loin et en diagonale</b> du premier" : ""}. Zoomez avec deux doigts si besoin ; touchez à nouveau pour corriger.</div>
       <div class="etape-form"${tmp ? "" : " hidden"}>
+        <label>Lieu <input id="cLieu" list="cLieux" autocomplete="off" spellcheck="false" placeholder="Nancy, Besançon, LFSN…"></label>
+        <datalist id="cLieux">${Object.keys(LIEUX).sort((a, b) => a.localeCompare(b, "fr")).map((n) => `<option value="${esc(n)}">`).join("")}</datalist>
+        <div class="ou"${slot === "azba" ? " hidden" : ""}>— ou coordonnées du croisement —</div>
+        <div${slot === "azba" ? " hidden" : ""}>
         <label>Latitude <select id="cLatD">${options(41, 52, 1, def.lat, (v) => v + "°")}</select>
           <select id="cLatM">${options(0, 50, 10, 0, (v) => String(v).padStart(2, "0") + "'")}</select> N</label>
         <label>Longitude <select id="cLonD">${options(0, 10, 1, def.lon, (v) => v + "°")}</select>
           <select id="cLonM">${options(0, 50, 10, 0, (v) => String(v).padStart(2, "0") + "'")}</select>
           <select id="cLonS"><option value="1">E</option><option value="-1">W</option></select></label>
+        </div>
         <button id="cValider">Valider ce point</button>
       </div>
     </div>`;
@@ -309,8 +356,17 @@
   }
   function validerPoint() {
     if (!tmp) return;
-    const lat = +$("#cLatD").value + +$("#cLatM").value / 60;
-    const lon = (+$("#cLonD").value + +$("#cLonM").value / 60) * +$("#cLonS").value;
+    let lat, lon;
+    const saisie = $("#cLieu") ? $("#cLieu").value : "";
+    if (saisie.trim()) {
+      const l = trouverLieu(saisie);
+      if (!l) { toast(`Lieu « ${saisie} » inconnu : choisissez une ville de la liste ou un code OACI.`, 4000); return; }
+      lat = l.lat; lon = l.lon;
+    } else if (slot === "azba") { toast("Tapez le nom de la ville touchée (ou un code OACI).", 3000); return; }
+    else {
+      lat = +$("#cLatD").value + +$("#cLatM").value / 60;
+      lon = (+$("#cLonD").value + +$("#cLonM").value / 60) * +$("#cLonS").value;
+    }
     ptsCal.push({ x: tmp.x, y: tmp.y, lat, lon });
     tmp = null;
     if (etape === 1) { etape = 2; }
@@ -321,7 +377,7 @@
     }
     rafraichir();
   }
-  function demarrerCalage() { cal = null; etape = 1; ptsCal = []; tmp = null; try { localStorage.removeItem("cCal"); } catch (e) {} rafraichir(); }
+  function demarrerCalage() { cal = null; etape = 1; ptsCal = []; tmp = null; try { localStorage.removeItem(cleCal()); } catch (e) {} rafraichir(); }
 
   /* ---------- Rafraîchissement général ---------- */
   function rafraichir() {
@@ -370,6 +426,19 @@
     e.target.value = "";
   });
   $("#cRecaler").addEventListener("click", demarrerCalage);
+  function choisirSlot(sl) {
+    slot = sl;
+    try { localStorage.setItem("cSlot", sl); } catch (e) {}
+    $("#slotBossy").classList.toggle("actif", sl === "bossy");
+    $("#slotAzba").classList.toggle("actif", sl === "azba");
+    image = null; cal = null; etape = 0; tmp = null; ptsCal = []; nat = { w: 0, h: 0 };
+    $("#cImg").removeAttribute("src"); $("#cSvg").innerHTML = "";
+    lireImage().then((b) => { if (b) chargerBlob(b, false); else rafraichir(); });
+  }
+  $("#slotBossy").addEventListener("click", () => choisirSlot("bossy"));
+  $("#slotAzba").addEventListener("click", () => choisirSlot("azba"));
+  $("#slotBossy").classList.toggle("actif", slot === "bossy");
+  $("#slotAzba").classList.toggle("actif", slot === "azba");
 
   $("#cSvg").addEventListener("click", (e) => {
     const svg = $("#cSvg");
