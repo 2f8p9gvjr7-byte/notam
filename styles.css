@@ -298,3 +298,4 @@ h1 { white-space: nowrap; }
 .etape-form input#cLieu { font: 16px var(--mono); background: var(--fond); color: var(--texte); border: 1px solid var(--bord); border-radius: 8px; padding: 6px 8px; width: 100%; box-sizing: border-box; margin-top: 4px; }
 .etape-form .ou { color: var(--doux); font-size: 12px; text-align: center; margin: 6px 0 2px; }
 #cCercles.off { opacity: 0.5; text-decoration: line-through; }
+.ofm-obst { display: block; }

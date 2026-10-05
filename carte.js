@@ -302,8 +302,11 @@
       if (px.type === "poly") el("polygon", { points: px.p.map((q) => `${q.x},${q.y}`).join(" "), fill: c, "fill-opacity": 0.15, stroke: c, "stroke-width": T.trait }, g);
       if (px.type === "point") px.p.forEach((q) => el("circle", { cx: q.x, cy: q.y, r: T.croix * 0.6, fill: c, stroke: "#fff", "stroke-width": T.trait * 0.6 }, g));
       if (px.type === "croix") px.p.forEach((q) => {
-        el("line", { x1: q.x - T.croix, y1: q.y - T.croix, x2: q.x + T.croix, y2: q.y + T.croix, stroke: c, "stroke-width": T.trait * 1.6 }, g);
-        el("line", { x1: q.x - T.croix, y1: q.y + T.croix, x2: q.x + T.croix, y2: q.y - T.croix, stroke: c, "stroke-width": T.trait * 1.6 }, g);
+        // symbole d'obstacle des cartes aéro : petit « Λ » avec un point à la base (= position exacte)
+        const k = T.croix * 0.75, d = `M ${q.x - k * 0.6} ${q.y} L ${q.x} ${q.y - k * 1.7} L ${q.x + k * 0.6} ${q.y}`;
+        el("path", { d, fill: "none", stroke: "#fff", "stroke-width": T.trait * 2.2, "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+        el("path", { d, fill: "none", stroke: c, "stroke-width": T.trait * 1.1, "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+        el("circle", { cx: q.x, cy: q.y, r: T.trait * 1.2, fill: c, stroke: "#fff", "stroke-width": T.trait * 0.5 }, g);
       });
       // étiquette numérotée (position écartée des autres), avec trait de rappel si éloignée
       const ex = it.etiq.x, ey = it.etiq.y;
@@ -549,7 +552,15 @@
       }
       if (px.type === "poly") { ctx.beginPath(); px.p.forEach((q, k) => (k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.globalAlpha = 0.15; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); }
       if (px.type === "point") px.p.forEach((q) => { ctx.beginPath(); ctx.arc(q.x, q.y, T.croix * 0.6, 0, 2 * Math.PI); ctx.fill(); });
-      if (px.type === "croix") px.p.forEach((q) => { ctx.lineWidth = T.trait * 1.6; ctx.beginPath(); ctx.moveTo(q.x - T.croix, q.y - T.croix); ctx.lineTo(q.x + T.croix, q.y + T.croix); ctx.moveTo(q.x - T.croix, q.y + T.croix); ctx.lineTo(q.x + T.croix, q.y - T.croix); ctx.stroke(); });
+      if (px.type === "croix") px.p.forEach((q) => {
+        const k = T.croix * 0.75;
+        ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(q.x - k * 0.6, q.y); ctx.lineTo(q.x, q.y - k * 1.7); ctx.lineTo(q.x + k * 0.6, q.y);
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = T.trait * 2.2; ctx.stroke();
+        ctx.strokeStyle = it.couleur; ctx.lineWidth = T.trait * 1.1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(q.x, q.y, T.trait * 1.2, 0, 2 * Math.PI); ctx.fillStyle = it.couleur; ctx.fill();
+        ctx.restore();
+      });
       const ex = it.etiq.x, ey = it.etiq.y;
       if (it.etiq.trait) { ctx.lineWidth = T.trait * 0.6; ctx.beginPath(); ctx.moveTo(px.ancre.x, px.ancre.y); ctx.lineTo(ex, ey); ctx.stroke(); }
       ctx.beginPath(); ctx.arc(ex, ey, T.etiq, 0, 2 * Math.PI); ctx.fillStyle = it.couleur; ctx.fill();
@@ -841,8 +852,8 @@
         ancre = { lat: f.geo.reduce((a, g) => a + g.lat, 0) / f.geo.length, lon: f.geo.reduce((a, g) => a + g.lon, 0) / f.geo.length };
       } else {
         f.geo.forEach((g) => {
-          const html = f.type === "croix" ? `<span class="ofm-croix" style="color:${c}">✕</span>` : `<span class="ofm-point" style="background:${c}"></span>`;
-          L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html, iconSize: [18, 18], iconAnchor: [9, 9] }), interactive: false }).addTo(ofmCouche);
+          const html = f.type === "croix" ? `<svg class="ofm-obst" width="18" height="18" viewBox="0 0 18 18"><path d="M5 15 L9 3 L13 15" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M5 15 L9 3 L13 15" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="9" cy="15" r="2.2" fill="${c}" stroke="#fff" stroke-width="1"/></svg>` : `<span class="ofm-point" style="background:${c}"></span>`;
+          L.marker([g.lat, g.lon], { icon: L.divIcon({ className: "", html, iconSize: [18, 18], iconAnchor: f.type === "croix" ? [9, 15] : [9, 9] }), interactive: false }).addTo(ofmCouche);
         });
         ancre = f.geo[0];
       }
