@@ -589,6 +589,7 @@
       z.innerHTML = slot === "azba"
         ? `<p class="aide">1. Sur le site <b>🗺 AZBA</b>, réglez la période (📅) sur <b>votre vol</b>, cadrez la région, et faites une <b>capture d'écran</b>.<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur <b>deux lieux connus éloignés</b> (ex. le point de Nancy puis celui de Besançon) : touchez le point de la ville, puis tapez son nom.</p>`
         : `<p class="aide">1. Dans CartaBossy, faites une <b>capture d'écran</b> de la zone du vol (nord en haut).<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur deux croisements du quadrillage (ou deux lieux connus).</p>`;
+      z.innerHTML += `<p class="note">💻 Sur ordinateur : faites <b>Windows + Maj + S</b>, sélectionnez la zone de la carte, puis revenez ici et faites <b>Ctrl + V</b> — la capture se colle directement, sans passer par un dossier.</p>`;
       return;
     }
     if (!etape) {
@@ -689,6 +690,21 @@
     e.target.value = "";
   });
   $("#cRecaler").addEventListener("click", demarrerCalage);
+  /* Sur ordinateur : coller directement une capture (Win+Maj+S puis Ctrl+V) */
+  document.addEventListener("paste", (e) => {
+    if (!document.getElementById("tab-carte").classList.contains("actif") || mode !== "capture") return;
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (const it of items) {
+      if (it.type && it.type.startsWith("image/")) {
+        const f = it.getAsFile();
+        if (!f) continue;
+        e.preventDefault();
+        sauverImage(f); chargerBlob(f, true);
+        toast("Capture collée ✓ — calez-la maintenant", 2500);
+        return;
+      }
+    }
+  });
   $("#cCercles").addEventListener("click", () => {
     masquerCercles = !masquerCercles;
     try { localStorage.setItem("cSansCercles", masquerCercles ? "1" : "0"); } catch (e) {}
