@@ -490,6 +490,30 @@
     t.dispatchEvent(new Event("input"));
     rafraichir();
   }
+
+  /* Créneau du vol affiché en haut des cartes (touchez-le pour le modifier dans Trier) */
+  function texteCreneau() {
+    const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null;
+    if (!d || !d.t1) return { html: "🕐 Aucun créneau : réglez le vol dans <b>Trier</b>", passe: false };
+    const passe = d.t2 < Date.now();
+    const alt = d.alt ? ` · ≤ ${Number(d.alt).toLocaleString("fr-FR")} ft` : "";
+    return { html: `${passe ? "⚠ Créneau passé · " : "🕐 "}${fPlage(d.t1, d.t2)}${alt}`, passe };
+  }
+  function bandeauCreneau(parent) {
+    if (!parent) return;
+    let b = parent.querySelector(":scope > .carte-creneau");
+    if (!b) {
+      b = document.createElement("button");
+      b.className = "carte-creneau";
+      b.title = "Modifier le créneau dans Trier";
+      b.addEventListener("click", (e) => { e.stopPropagation(); e.preventDefault(); if (typeof ouvrirOnglet === "function") ouvrirOnglet("trier"); });
+      ["mousedown", "touchstart", "dblclick", "pointerdown"].forEach((ev) => b.addEventListener(ev, (e) => e.stopPropagation()));
+      parent.appendChild(b);
+    }
+    const t = texteCreneau();
+    b.innerHTML = t.html;
+    b.classList.toggle("passe", t.passe);
+  }
   /* ---------- Dessin à l'écran (SVG) ---------- */
   function tailles() {
     const base = Math.max(nat.w, nat.h) / 100;
@@ -646,11 +670,12 @@
     construire();
     if (mode === "ofm") {
       if (!document.getElementById("tab-carte").classList.contains("actif")) return; // carte dessinée à l'ouverture de l'onglet
-      dessinerOFM(); afficherListe(); infoOFM(); return;
+      dessinerOFM(); afficherListe(); infoOFM(); if (ofm) bandeauCreneau(ofm.getContainer()); return;
     }
     const zone = $("#cZone");
     zone.hidden = !image;
     if (image) dessinerSVG();
+    if (image && cal) bandeauCreneau(zone); else { const b0 = zone.querySelector(".carte-creneau"); if (b0) b0.remove(); }
     afficherEtape();
     afficherListe();
     const info = $("#cInfo");
