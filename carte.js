@@ -417,9 +417,9 @@
       const z = zoneEditee === "nouvelle" ? { nom: "", bas: "", haut: "", note: "", texte: "", couleur: COULEURS_ZONE[zones.length % COULEURS_ZONE.length] } : zones.find((x) => x.id === zoneEditee);
       const g = geometrieZone(z.texte);
       p.innerHTML = `<div class="zone-form">
-        <label>Nom <input id="zNom" value="${esc(z.nom)}" placeholder="ZRT OCHEY"></label>
-        <div class="zone-lim"><label>Plancher <input id="zBas" value="${esc(z.bas)}" placeholder="SFC"></label><label>Plafond <input id="zHaut" value="${esc(z.haut)}" placeholder="3600 ft AMSL"></label></div>
-        <label>Remarque <input id="zNote" value="${esc(z.note)}" placeholder="Active SR-SS · Ochey Info 122.10"></label>
+        <label>Nom <input id="zNom" value="${esc(z.nom)}" placeholder="ex. : ZRT NOM"></label>
+        <div class="zone-lim"><label>Plancher <input id="zBas" value="${esc(z.bas)}" placeholder="ex. : SFC"></label><label>Plafond <input id="zHaut" value="${esc(z.haut)}" placeholder="ex. : 3500 ft AMSL"></label></div>
+        <label>Remarque <input id="zNote" value="${esc(z.note)}" placeholder="ex. : horaires, fréquence…"></label>
         <label>Limites latérales <small>(collez le texte du SUP AIP : coordonnées, arcs, cercles — ou touchez « ✏️ Dessiner »)</small>
           <textarea id="zTexte" rows="6" spellcheck="false" placeholder="48°39'44&quot;N, 005°54'58&quot;E&#10;48°45'00&quot;N, 005°57'32&quot;E&#10;Clockwise arc of 10 NM radius centered on 48°34'59&quot;N, 005°57'16&quot;E&#10;48°43'07&quot;N, 006°06'07&quot;E …">${esc(z.texte)}</textarea></label>
         <div class="zone-etat ${g.erreur ? "warn" : ""}">${g.erreur ? "⚠ " + esc(g.erreur) : `✓ ${coordsZone(sansAcc(z.texte)).length} coordonnées lues · forme de ${g.pts.length} points`}</div>
