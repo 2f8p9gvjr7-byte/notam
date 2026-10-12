@@ -337,3 +337,12 @@ html, body { overflow-x: hidden; }
 #ofmBloc.plein .carte-creneau { top: calc(env(safe-area-inset-top) + 10px); }
 .creneau.vieux { color: var(--rouge); font-weight: 700; }
 .carte-creneau small { font-size: 12px; font-weight: 700; }
+
+/* Mode d'emploi */
+.aide-btn { cursor: pointer; font-size: 14px; padding: 4px 10px; }
+.guide { padding: 4px 2px 40px; line-height: 1.45; }
+.guide details { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; margin: 10px 0; padding: 0 14px; }
+.guide summary { padding: 12px 0; font-weight: 700; color: var(--orange); cursor: pointer; }
+.guide ol, .guide ul { padding-left: 20px; margin: 0 0 12px; }
+.guide li { margin: 5px 0; }
+.guide p { margin: 0 0 12px; }

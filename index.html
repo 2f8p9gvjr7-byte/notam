@@ -19,6 +19,7 @@
     <div class="entete-droite">
       <a class="lien-haut" href="https://sofia-briefing.aviation-civile.gouv.fr/" target="_blank" rel="noopener">🌐 SOFIA</a>
       <a class="lien-haut" href="https://www.sia.aviation-civile.gouv.fr/azbaEx/?lang=fr" target="_blank" rel="noopener">🗺 AZBA</a>
+      <button id="btnAide" class="lien-haut aide-btn" aria-label="Mode d'emploi">?</button>
       <div id="statut" class="statut" title="État de la connexion">●</div>
     </div>
   </header>
@@ -153,6 +154,89 @@
     <div id="lectureContenu"></div>
   </div>
 
+
+  <div id="aide" class="lecture" hidden>
+    <div class="lecture-haut">
+      <button id="aideFermer">← Retour à l'appli</button>
+    </div>
+    <div class="guide">
+      <h2>Mode d'emploi</h2>
+      <p class="note">Aide à la préparation — ne remplace ni SOFIA, ni l'AZBA, ni la VAC.</p>
+
+      <details open><summary>1. Avant chaque vol : la routine</summary>
+        <ol>
+          <li><b>Safari</b> → SOFIA → votre briefing (PIB trajet).</li>
+          <li><b>Partager → Copier SOFIA</b> (raccourci iPhone).</li>
+          <li>Appli → <b>Trier → 📋 Coller</b> : heure, durée, plafond et route sont repris.</li>
+          <li>Ajustez la <b>durée réelle</b> du vol (SOFIA met souvent 12 h).</li>
+          <li>Lisez <b>« À lire »</b> : le plus important est en haut (zones R, avertissements W, GNSS, obstacles).</li>
+          <li><b>Carte</b> : vérifiez la route au milieu des repères.</li>
+          <li><b>🗺 AZBA</b> : vérifiez le RTBA à votre heure de passage.</li>
+        </ol>
+      </details>
+
+      <details><summary>2. Onglet Trier</summary>
+        <ul>
+          <li><b>À lire</b> : NOTAM actifs pendant votre vol et sous votre altitude, cochés par défaut.</li>
+          <li><b>Écartés</b> : hors créneau, au-dessus de vous, IFR seul, administratif, ou déclencheur TT « activable par NOTAM ». Jetez-y un œil.</li>
+          <li><b>⚠ Déclencheur de SUP AIP sans activation par NOTAM</b> : la zone peut être active selon le SUP lui-même (ex. ZRT Ochey) → lisez le SUP.</li>
+          <li><b>⚠ Briefing produit il y a…</b> : briefing ancien, refaites-le.</li>
+          <li>Touchez un NOTAM pour l'ouvrir ; les cases cochées vont dans <b>📖 Lire</b> et <b>📄 PDF</b>.</li>
+        </ul>
+      </details>
+
+      <details><summary>3. Onglet Carte — OFM</summary>
+        <ul>
+          <li>Bandeau en haut : votre <b>créneau</b> (heure de Paris). Touchez-le pour le modifier.</li>
+          <li><b>Route</b> : codes OACI (LFGY LFSN) ou points ; <b>✎</b> pour ajouter / déplacer / supprimer un point sur la carte.</li>
+          <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
+          <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
+          <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>
+        </ul>
+      </details>
+
+      <details><summary>4. Mes zones (ZRT d'un SUP AIP)</summary>
+        <ol>
+          <li>Dans le SUP AIP (PDF), rubrique <b>Limites latérales / Lateral limits</b> : copiez tout le bloc de coordonnées (arcs et cercles compris).</li>
+          <li><b>🟪 Mes zones → ＋ Ajouter</b> : tapez le nom, plancher, plafond, remarque (horaires, fréquence).</li>
+          <li>Collez dans la grande case → « ✓ X coordonnées lues ».</li>
+          <li><b>👁 Aperçu</b>, comparez avec le dessin du SUP (ou SkyDemon), puis <b>✓ Enregistrer</b>.</li>
+        </ol>
+        <p>🎯 centrer · 👁/🚫 afficher/masquer · ✎ modifier · 🗑 supprimer (pensez-y à la fin du SUP). Touchez l'intérieur d'une zone (hors numéros) pour sa fiche.</p>
+      </details>
+
+      <details><summary>5. Ma capture (Bossy / AZBA)</summary>
+        <ol>
+          <li>Capture d'écran de la carte (nord en haut). Pour l'AZBA : réglez d'abord 📅 sur l'heure du vol.</li>
+          <li><b>🖼 Ma capture</b> → Carte Bossy ou Carte AZBA → <b>🖼 Capture</b>.</li>
+          <li>Calage en 2 points, <b>éloignés et en diagonale</b> :
+            <ul><li>Bossy : croisement du quadrillage (degrés écrits au bord) ou centre d'un terrain + code OACI ;</li>
+            <li>AZBA : petit rond d'une ville + son nom (Nancy, Mulhouse…).</li></ul></li>
+          <li>Route, NOTAM et zones s'affichent dessus ; <b>📤 Partager</b> pour l'image.</li>
+        </ol>
+        <p>Repères décalés ? Un degré mal saisi : <b>↺ Recaler</b>.</p>
+      </details>
+
+      <details><summary>6. Décoder, Lexique, Chercher, Codes</summary>
+        <ul>
+          <li><b>Décoder</b> : un code Q (QRRCA) ou un NOTAM entier → explication et « en vigueur maintenant ? ».</li>
+          <li><b>Lexique</b> : abréviations (PPR, HJ, RDL…).</li>
+          <li><b>Chercher</b> : un mot (voltige, piste…) → le code Q correspondant.</li>
+          <li><b>Codes</b> : liste complète des sujets et états.</li>
+        </ul>
+      </details>
+
+      <details><summary>7. Bon à savoir</summary>
+        <ul>
+          <li>NOTAM et AZBA sont en <b>UTC</b> ; l'appli affiche l'heure de Paris (UTC +2 l'été, +1 l'hiver).</li>
+          <li>Le <b>RTBA</b> n'est jamais dans les NOTAM : seulement sur l'AZBA.</li>
+          <li><b>TT</b> = déclencheur de SUP AIP, pas une activation.</li>
+          <li>Vos données (briefing, zones, captures) restent <b>sur ce téléphone</b>.</li>
+          <li>Mise à jour : 14 fichiers sur GitHub → vérifier le numéro de version en bas.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
   <div id="toast" class="toast"></div>
 
   <script src="./codes.js"></script>

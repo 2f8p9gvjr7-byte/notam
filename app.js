@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.4";
+const APP_VERSION = "4.5";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -801,3 +801,7 @@ if ("serviceWorker" in navigator) {
     }).catch(() => {});
   });
 }
+
+/* Mode d'emploi */
+$("#btnAide").addEventListener("click", () => { $("#aide").hidden = false; document.body.style.overflow = "hidden"; $("#aide").scrollTop = 0; });
+$("#aideFermer").addEventListener("click", () => { $("#aide").hidden = true; document.body.style.overflow = ""; });
