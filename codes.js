@@ -967,7 +967,9 @@ function lireEntetePIB(texte) {
 }
 
 const IFR_SEUL_SUJETS = new Set(["PA", "PD", "PI", "PU", "PH", "PO", "PX", "PM", "IC", "ID", "IG", "II", "IL", "IM", "IN", "IO", "IS", "IT", "IU", "IW", "IX", "IY"]);
-const ORDRE_FAMILLE = "RWAMFSCNLOPGIX";
+// Ordre d'affichage des « À lire » : ce qui touche directement la sécurité du vol d'abord
+// R restrictions · W avertissements · G GNSS · O obstacles · A espaces aériens · M/F aérodrome · puis le reste
+const ORDRE_FAMILLE = "RWGOAMFLNCSPIX";
 
 /* Classe chaque NOTAM : à lire, ou écarté avec une raison. */
 function trierBriefing(texte, depart, dureeMin, altMax) {
