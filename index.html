@@ -163,10 +163,25 @@
       <h2>Mode d'emploi</h2>
       <p class="note">Aide à la préparation — ne remplace ni SOFIA, ni l'AZBA, ni la VAC.</p>
 
+      <details><summary>0. Une seule fois : créer le raccourci « Copier SOFIA »</summary>
+        <p>Il copie toute la page SOFIA d'un coup (sans sélectionner à la main).</p>
+        <ol>
+          <li>Réglages → Apps → Raccourcis → Avancé : activez <b>Autoriser l'exécution des scripts</b>.</li>
+          <li>App <b>Raccourcis</b> → <b>＋</b> → renommez-le <b>Copier SOFIA</b>.</li>
+          <li>Ajoutez l'action <b>Exécuter JavaScript sur une page web</b>, effacez le texte proposé et mettez seulement :<br><code>completion(document.body.innerText);</code></li>
+          <li>Ajoutez l'action <b>Copier dans le presse-papiers</b>.</li>
+          <li>Bouton <b>ⓘ</b> en bas → activez <b>Dans la feuille de partage</b> → ✓.</li>
+          <li>En haut, ligne « Recevoir … depuis Feuille partagée » : touchez le premier mot bleu → <b>Effacer</b> → cochez seulement <b>Pages web Safari</b> → ✓.</li>
+          <li>Dans « Exécuter JavaScript sur <b>Page web</b> », touchez <b>Page web</b> → <b>Entrée du raccourci</b>.</li>
+          <li>‹ pour sortir (enregistrement automatique).</li>
+        </ol>
+        <p><b>Sans raccourci</b> : sur la page SOFIA, appui long sur le texte → faites glisser jusqu'en bas → Copier.</p>
+      </details>
+
       <details open><summary>1. Avant chaque vol : la routine</summary>
         <ol>
-          <li><b>Safari</b> → SOFIA → votre briefing (PIB trajet).</li>
-          <li><b>Partager → Copier SOFIA</b> (raccourci iPhone).</li>
+          <li>Dans l'appli, touchez <b>🌐 SOFIA</b> (en haut) et faites votre briefing (PIB trajet).</li>
+          <li>Sur la page du briefing : <b>Partager</b> (carré avec flèche) → <b>faites défiler tout en bas</b> → <b>Copier SOFIA</b> (la 1ʳᵉ fois : Autoriser).</li>
           <li>Appli → <b>Trier → 📋 Coller</b> : heure, durée, plafond et route sont repris.</li>
           <li>Ajustez la <b>durée réelle</b> du vol (SOFIA met souvent 12 h).</li>
           <li>Lisez <b>« À lire »</b> : le plus important est en haut (zones R, avertissements W, GNSS, obstacles).</li>

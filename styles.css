@@ -352,3 +352,4 @@ html, body { overflow-x: hidden; }
 #ofmBloc.plein .ofm-map { z-index: 0; }
 .lecture { z-index: 3000; overscroll-behavior: contain; }
 .toast { z-index: 4000; }
+.guide code { background: var(--fond); padding: 2px 6px; border-radius: 6px; font: 13px var(--mono); color: var(--orange); word-break: break-all; }
