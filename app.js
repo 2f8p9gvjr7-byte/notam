@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.1";
+const APP_VERSION = "4.2";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -409,7 +409,8 @@ function trierInterne() {
 
   let html = `<div class="bilan">
     <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
-    ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}</div>` : ""}
+    ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}${entete.production ? " · produit le " + fDate(entete.production) : ""}</div>` : ""}
+    ${entete && entete.production && Date.now() - entete.production > 12 * 3600000 ? `<div class="creneau vieux">⚠ Briefing produit il y a ${Math.round((Date.now() - entete.production) / 3600000) >= 48 ? Math.floor((Date.now() - entete.production) / 86400000) + " jours" : Math.round((Date.now() - entete.production) / 3600000) + " h"} : refaites-le sur SOFIA avant de voler.</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
     <div class="creneau">Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</div>
     <button id="btnLire" class="btn-lire">📖 Lire à l'écran</button>
@@ -561,7 +562,9 @@ try {
   if (localStorage.getItem("tAlt")) tAlt.value = localStorage.getItem("tAlt");
   if (localStorage.getItem("tTexte")) tTexte.value = localStorage.getItem("tTexte");
   const d = localStorage.getItem("tDep");
-  if (d && new Date(d).getTime() > Date.now() - 12 * 3600000) tDep.value = d;
+  // Un briefing est enregistré : on garde SON heure de départ, même ancienne (sinon on trierait
+  // un vieux briefing sur l'heure du jour). Sans briefing, une heure trop ancienne est remplacée par maintenant.
+  if (d && (tTexte.value.trim() || new Date(d).getTime() > Date.now() - 12 * 3600000)) tDep.value = d;
 } catch (e) {}
 if (!tDep.value) tDep.value = valeurLocale(Math.floor(Date.now() / 300000) * 300000);
 trier();

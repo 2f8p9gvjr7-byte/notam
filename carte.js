@@ -497,7 +497,10 @@
     if (!d || !d.t1) return { html: "🕐 Aucun créneau : réglez le vol dans <b>Trier</b>", passe: false };
     const passe = d.t2 < Date.now();
     const alt = d.alt ? ` · ≤ ${Number(d.alt).toLocaleString("fr-FR")} ft` : "";
-    return { html: `${passe ? "⚠ Créneau passé · " : "🕐 "}${fPlage(d.t1, d.t2)}${alt}`, passe };
+    const prod = d.entete && d.entete.production;
+    const vieux = prod && Date.now() - prod > 12 * 3600000;
+    const ligne2 = vieux ? `<br><small>⚠ Briefing SOFIA du ${fDate(prod)} : à refaire</small>` : "";
+    return { html: `${passe ? "⚠ Créneau passé · " : "🕐 "}${fPlage(d.t1, d.t2)}${alt}${ligne2}`, passe: passe || vieux };
   }
   function bandeauCreneau(parent) {
     if (!parent) return;

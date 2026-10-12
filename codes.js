@@ -952,6 +952,8 @@ function lireEntetePIB(texte) {
   // Le menu de SOFIA peut s'intercaler entre l'intitulé et la valeur : on tolère du texte sans chiffres entre les deux.
   const dep = T.match(/DATE ET HEURE DE DEPART\s*\(UTC\)[^\d]{0,120}?(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
   if (dep) res.depart = Date.UTC(+dep[3], +dep[2] - 1, +dep[1], +dep[4], +dep[5]);
+  const prod = T.match(/DATE ET HEURE DE PRODUCTION\s*\(UTC\)[^\d]{0,120}?(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+  if (prod) res.production = Date.UTC(+prod[3], +prod[2] - 1, +prod[1], +prod[4], +prod[5]);
   const dur = T.match(/\bDUREE\b[^\d]{0,120}?(\d{1,2}):?(\d{2})\b/);
   if (dur) res.dureeMin = +dur[1] * 60 + +dur[2];
   const plaf = T.match(/PLAFOND\s*\(EN FL\)[^\d]{0,120}?(\d{1,3})\b/);
