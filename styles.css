@@ -346,3 +346,9 @@ html, body { overflow-x: hidden; }
 .guide ol, .guide ul { padding-left: 20px; margin: 0 0 12px; }
 .guide li { margin: 5px 0; }
 .guide p { margin: 0 0 12px; }
+
+/* La carte reste « dans sa boîte » : ses calques ne passent plus au-dessus des fenêtres de lecture / mode d'emploi */
+.ofm-map, .carte-zone { position: relative; z-index: 0; isolation: isolate; }
+#ofmBloc.plein .ofm-map { z-index: 0; }
+.lecture { z-index: 3000; overscroll-behavior: contain; }
+.toast { z-index: 4000; }
