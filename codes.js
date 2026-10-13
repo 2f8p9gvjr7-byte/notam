@@ -966,6 +966,33 @@ function lireEntetePIB(texte) {
   return res.depart ? res : null;
 }
 
+
+/* Liste AZBA (site SIA, « Liste des zones activées », copiée en texte) → créneaux UTC par zone */
+function lireAZBA(texte) {
+  if (!/LISTE DES ZONES ACTIV/.test(majSansAccent(texte || ""))) return null;
+  const lignes = texte.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const res = { creneaux: [], connuJusqua: null };
+  const fin = texte.match(/Au del[aà] du (\d{2})\/(\d{2})\/(\d{4}) [aà] (\d{2}):(\d{2})/i);
+  if (fin) res.connuJusqua = Date.UTC(+fin[3], +fin[2] - 1, +fin[1], +fin[4], +fin[5]);
+  let jour = null;
+  for (const l of lignes) {
+    const d = l.match(/^(\d{2})\/(\d{2})\/(\d{4})\b/);
+    if (d) { jour = Date.UTC(+d[3], +d[2] - 1, +d[1]); continue; }
+    const z = l.match(/^(R\s?\d{2,3}\s?[A-Z]{0,2}\d?(?:\.\d)?)\s+(\d{4}-\d{4}.*)$/i);
+    if (!z || jour == null) continue;
+    const nom = z[1].replace(/\s+/g, "").replace(/^R(\d+)/, "R $1 ").trim();
+    (z[2].match(/\d{4}-\d{4}/g) || []).forEach((p) => {
+      const [a, b] = p.split("-");
+      const t1 = jour + (+a.slice(0, 2) * 60 + +a.slice(2)) * 60000;
+      let t2 = jour + (+b.slice(0, 2) * 60 + +b.slice(2)) * 60000;
+      if (b === "2359") t2 += 60000;
+      if (t2 <= t1) t2 += 86400000;
+      res.creneaux.push({ zone: nom, a: t1, b: t2 });
+    });
+  }
+  return res.creneaux.length || /AUCUNE ZONE ACTIVE/.test(majSansAccent(texte)) ? res : null;
+}
+
 const IFR_SEUL_SUJETS = new Set(["PA", "PD", "PI", "PU", "PH", "PO", "PX", "PM", "IC", "ID", "IG", "II", "IL", "IM", "IN", "IO", "IS", "IT", "IU", "IW", "IX", "IY"]);
 // Ordre d'affichage des « À lire » : ce qui touche directement la sécurité du vol d'abord
 // R restrictions · W avertissements · G GNSS · O obstacles · A espaces aériens · M/F aérodrome · puis le reste
@@ -1014,4 +1041,4 @@ function trierBriefing(texte, depart, dureeMin, altMax) {
   return res;
 }
 
-if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, lireEntetePIB, SUJETS, ETATS, FAMILLES, LEXIQUE };
+if (typeof module !== "undefined") module.exports = { lireAZBA, decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, lireEntetePIB, SUJETS, ETATS, FAMILLES, LEXIQUE };

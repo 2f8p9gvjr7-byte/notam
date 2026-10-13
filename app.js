@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.8";
+const APP_VERSION = "4.9";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -373,6 +373,40 @@ function majCompteur() {
   const l = $("#btnLire");
   if (l) l.textContent = `📖 Lire à l'écran (${nb})`;
 }
+
+/* ---------- AZBA collée (liste des zones activées du site SIA) ---------- */
+let azba = null;   // { texte, colle (ms), data }
+try { const z = JSON.parse(localStorage.getItem("azba") || "null"); if (z && z.texte) azba = Object.assign(z, { data: lireAZBA(z.texte) }); } catch (e) {}
+function enregistrerAZBA(texte) {
+  const data = lireAZBA(texte);
+  if (!data) return false;
+  azba = { texte, colle: Date.now(), data };
+  try { localStorage.setItem("azba", JSON.stringify({ texte, colle: azba.colle })); } catch (e) {}
+  return true;
+}
+function azbaPendantVol(t1, t2) {
+  if (!azba || !azba.data) return null;
+  const parZone = {};
+  azba.data.creneaux.forEach((c) => {
+    if (c.b > t1 && c.a < t2) (parZone[c.zone] = parZone[c.zone] || []).push([Math.max(c.a, t1), Math.min(c.b, t2)]);
+  });
+  return parZone;
+}
+function htmlAZBA(t1, t2) {
+  if (!azba || !azba.data) return `<div class="azba-box vide">🗺 <b>AZBA</b> : pas encore collée. Sur le site AZBA, ouvrez la <b>liste ☰</b>, puis <b>Partager → Copier SOFIA</b>, et touchez <b>📋 Coller</b> ici.</div>`;
+  const z = azbaPendantVol(t1, t2);
+  const noms = Object.keys(z);
+  const age = Date.now() - azba.colle;
+  let h = `<div class="azba-box ${noms.length ? "rouge" : "vert"}"><div class="azba-titre">🗺 <b>AZBA</b> <small>collée ${age < 3600000 ? "il y a " + Math.max(1, Math.round(age / 60000)) + " min" : "le " + fDate(azba.colle)}</small> <button id="azbaEffacer" class="azba-x" aria-label="Effacer l'AZBA">✕</button></div>`;
+  if (noms.length) {
+    h += `<div>⚠ <b>${noms.length} zone${noms.length > 1 ? "s" : ""} RTBA active${noms.length > 1 ? "s" : ""} pendant votre vol</b> (heure de Paris) :</div><ul>`
+      + noms.map((n) => `<li><b>${esc(n)}</b> : ${z[n].map(([a, b]) => `${fHeure(a)} → ${fHeure(b)}`).join(", ")}</li>`).join("") + `</ul>`
+      + `<div class="petit">Votre route les traverse-t-elle ? Vérifiez sur la capture AZBA ou la carte.</div>`;
+  } else h += `<div>✓ Aucune zone RTBA active pendant votre vol.</div>`;
+  if (azba.data.connuJusqua && t2 > azba.data.connuJusqua) h += `<div class="petit warn">⚠ Activations connues seulement jusqu'au ${fDate(azba.data.connuJusqua)} (heure de Paris) : recopiez l'AZBA plus près du vol.</div>`;
+  if (age > 12 * 3600000) h += `<div class="petit warn">⚠ Copie ancienne : recopiez l'AZBA le jour du vol.</div>`;
+  return h + `</div>`;
+}
 function trier() {
   try { trierInterne(); }
   catch (err) {
@@ -389,9 +423,9 @@ function trierInterne() {
     localStorage.setItem("tTexte", texte);
     localStorage.setItem("tDep", tDep.value);
   } catch (e) {}
-  if (!texte.trim()) { zone.innerHTML = ""; return; }
   const dep = new Date(tDep.value).getTime();
   const dur = +tDur.value, alt = +tAlt.value || 99999;
+  if (!texte.trim()) { zone.innerHTML = isNaN(dep) ? "" : htmlAZBA(dep, dep + dur * 60000); return; }
   if (isNaN(dep)) { zone.innerHTML = `<div class="erreur">Indiquez l'heure de départ.</div>`; return; }
 
   const r = trierBriefing(texte, dep, dur, alt);
@@ -413,10 +447,11 @@ function trierInterne() {
     ${entete && entete.production && Date.now() - entete.production > 12 * 3600000 ? `<div class="creneau vieux">⚠ Briefing produit il y a ${Math.round((Date.now() - entete.production) / 3600000) >= 48 ? Math.floor((Date.now() - entete.production) / 86400000) + " jours" : Math.round((Date.now() - entete.production) / 3600000) + " h"} : refaites-le sur SOFIA avant de voler.</div>` : ""}
     <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
     <div class="creneau">Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</div>
+    ${htmlAZBA(trier.t1, trier.t2)}
     <button id="btnLire" class="btn-lire">📖 Lire à l'écran</button>
     <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM cochés</button>
   </div>`;
-  dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete };
+  dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete, azba: azbaPendantVol(trier.t1, trier.t2) };
   chargerJsPDF();
 
   html += `<h2 class="section">À LIRE</h2>`;
@@ -444,17 +479,24 @@ function trierInterne() {
 
 [tDep, tDur, tAlt].forEach((el) => el.addEventListener("change", trier));
 tAlt.addEventListener("input", trier);
-tTexte.addEventListener("input", trier);
+let briefingPrecedent = tTexte.value;
+tTexte.addEventListener("input", () => {
+  if (enregistrerAZBA(tTexte.value)) { tTexte.value = briefingPrecedent; toast("AZBA enregistrée ✓ (le briefing NOTAM est conservé)", 3000); }
+  briefingPrecedent = tTexte.value;
+  trier();
+});
 $("#tMaintenant").addEventListener("click", departMaintenant);
 $("#tEffacer").addEventListener("click", () => { tTexte.value = ""; trier(); tTexte.focus(); });
 $("#tColler").addEventListener("click", async () => {
   try {
     const t = await navigator.clipboard.readText();
-    if (t) { tTexte.value = t; trier(); }
+    if (t && enregistrerAZBA(t)) { toast("AZBA enregistrée ✓", 2500); trier(); }
+    else if (t) { tTexte.value = t; trier(); }
   } catch (e) { toast("Touchez la bulle « Coller » qui apparaît, ou appui long dans le champ → Coller", 4500); tTexte.focus(); }
 });
 let positionTri = 0;
 $("#tResultat").addEventListener("click", (e) => {
+  if (e.target.closest("#azbaEffacer")) { azba = null; try { localStorage.removeItem("azba"); } catch (er) {} trier(); return; }
   if (e.target.closest("#btnPdf") || e.target.closest(".coche")) return;
   if (e.target.closest("#btnLire")) { ouvrirLecture(); return; }
   const abr = e.target.closest(".abr");
