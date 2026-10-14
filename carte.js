@@ -499,9 +499,7 @@
     const alt = d.alt ? ` · ≤ ${Number(d.alt).toLocaleString("fr-FR")} ft` : "";
     const prod = d.entete && d.entete.production;
     const vieux = prod && Date.now() - prod > 12 * 3600000;
-    let ligne2 = vieux ? `<br><small>⚠ Briefing SOFIA du ${fDate(prod)} : à refaire</small>` : "";
-    const zr = d.azba ? Object.keys(d.azba) : [];
-    if (zr.length) ligne2 += `<br><small class="rtba">⚠ RTBA actif : ${zr.slice(0, 4).join(", ")}${zr.length > 4 ? "…" : ""}</small>`;
+    const ligne2 = vieux ? `<br><small>⚠ Briefing SOFIA du ${fDate(prod)} : à refaire</small>` : "";
     return { html: `${passe ? "⚠ Créneau passé · " : "🕐 "}${fPlage(d.t1, d.t2)}${alt}${ligne2}`, passe: passe || vieux };
   }
   function bandeauCreneau(parent) {
