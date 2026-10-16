@@ -887,10 +887,46 @@
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 14, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
     }).addTo(ofm);
-    L.tileLayer("https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest", {
+    const coucheOFM = L.tileLayer("https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest", {
       minZoom: 6, maxZoom: 14, minNativeZoom: 7, maxNativeZoom: 12,
       attribution: '© <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a> (OFMA General Users\' License)'
     }).addTo(ofm);
+    FondBossy.brancher(ofm);
+    let fond = "ofm";
+    try { if (localStorage.getItem("cFond") === "bossy") fond = "bossy"; } catch (e) {}
+    async function appliquerFond() {
+      if (fond === "bossy" && !(await FondBossy.present())) fond = "ofm";
+      if (fond === "bossy") { ofm.removeLayer(coucheOFM); FondBossy.activer(true); }
+      else { FondBossy.activer(false); if (!ofm.hasLayer(coucheOFM)) coucheOFM.addTo(ofm); }
+      try { localStorage.setItem("cFond", fond); } catch (e) {}
+      const b = document.getElementById("ofmFond");
+      if (b) { b.textContent = fond === "bossy" ? "OFM" : "BOSSY"; b.title = fond === "bossy" ? "Revenir au fond OFM" : "Carte Bossy"; }
+    }
+    const choixKmz = document.createElement("input");
+    choixKmz.type = "file"; choixKmz.hidden = true;
+    document.body.appendChild(choixKmz);
+    choixKmz.addEventListener("change", async () => {
+      const f = choixKmz.files && choixKmz.files[0];
+      choixKmz.value = "";
+      if (!f) return;
+      if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier .kmz de la CartaBossy", 4000); return; }
+      try {
+        const nordEst = confirm("Pour gagner de la place, garder le détail seulement pour le Nord-Est (Reims – Dijon – Besançon – Strasbourg – Luxembourg), environ 45 Mo ?\n\nOK = Nord-Est seulement\nAnnuler = France entière (environ 160 Mo)");
+        const zone = nordEst ? { n: 50.2, s: 46.3, e: 8.6, w: 3.8 } : null;
+        toast("Lecture de la carte Bossy… 0 %", 60000);
+        const idx = await FondBossy.importer(f, (p) => toast(`Lecture de la carte Bossy… ${Math.round(p * 100)} %`, 60000), zone);
+        toast(`Carte Bossy enregistrée sur le téléphone${zone ? " (détail Nord-Est)" : ""}. Vous pouvez supprimer le fichier .kmz de Fichiers.`, 6000);
+        fond = "bossy"; appliquerFond();
+      } catch (e) { toast("Carte Bossy non chargée : " + (e && e.message || e), 6000); }
+    });
+    async function basculerFond() {
+      if (fond === "ofm" && !(await FondBossy.present())) {
+        toast("Choisissez le fichier CartaBossy .kmz (une seule fois)", 3000);
+        choixKmz.click(); return;
+      }
+      fond = fond === "ofm" ? "bossy" : "ofm";
+      appliquerFond();
+    }
     let vue = null;
     try { vue = JSON.parse(localStorage.getItem("cVue") || "null"); } catch (e) {}
     if (vue) { ofm.setView([vue.lat, vue.lon], vue.z); dejaCadre = true; }
@@ -905,12 +941,23 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
+        div.innerHTML = `<a href="#" id="ofmFond" class="ofm-fond" title="Carte Bossy">BOSSY</a><a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
     });
     ofm.addControl(new Boutons());
+    appliquerFond();
+    (function () {
+      const b = document.getElementById("ofmFond");
+      let minuteur = null, long = false;
+      b.addEventListener("click", (e) => { e.preventDefault(); if (long) { long = false; return; } basculerFond(); });
+      const debut = () => { long = false; minuteur = setTimeout(() => { long = true; if (confirm("Charger une autre carte Bossy (nouvelle édition) ?")) choixKmz.click(); }, 700); };
+      const fin = () => clearTimeout(minuteur);
+      b.addEventListener("touchstart", debut, { passive: true }); b.addEventListener("touchend", fin); b.addEventListener("touchmove", fin);
+      b.addEventListener("mousedown", debut); b.addEventListener("mouseup", fin); b.addEventListener("mouseleave", fin);
+      b.addEventListener("contextmenu", (e) => e.preventDefault());
+    })();
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
     ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
