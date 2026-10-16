@@ -271,7 +271,6 @@ h1 { white-space: nowrap; }
 
 .toast { z-index: 60; }
 
-.ofm-boutons a.ofm-fond { font-size: 10px; font-weight: 700; letter-spacing: -.3px; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .ofm-boutons a.on { background: #d81b60 !important; color: #fff !important; }
 .ofm-poignee { display: block; width: 22px; height: 22px; margin: 2px; border-radius: 11px; background: #d81b60; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 .ofm-poignee.ext { background: #fff; border-color: #d81b60; }

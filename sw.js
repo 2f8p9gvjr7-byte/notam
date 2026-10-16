@@ -3,10 +3,10 @@
    ET APP_VERSION dans app.js. C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
 
-const VERSION = "4.8.2";
+const VERSION = "4.8.1";
 const CACHE = "qcode-v" + VERSION;
 const CACHE_TUILES = "qcode-tuiles"; // conservé d'une version à l'autre
-const TUILES = ["tile.openstreetmap.org", "nwy-tiles-api.prod.newaydata.com", "data.geopf.fr"];
+const TUILES = ["tile.openstreetmap.org", "nwy-tiles-api.prod.newaydata.com"];
 let compteurTuiles = 0;
 function limiterTuiles(c) {
   if (++compteurTuiles % 50) return;           // on ne vérifie que de temps en temps

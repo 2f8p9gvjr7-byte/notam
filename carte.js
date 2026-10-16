@@ -884,54 +884,13 @@
   function initOFM() {
     if (ofm || typeof L === "undefined") return;
     ofm = L.map("ofmMap", { zoomControl: true, attributionControl: true, minZoom: 5, maxZoom: 14 });
-    const fondOFM = L.layerGroup([
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 14, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-      }),
-      L.tileLayer("https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest", {
-        minZoom: 6, maxZoom: 14, minNativeZoom: 7, maxNativeZoom: 12,
-        attribution: '© <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a> (OFMA General Users\' License)'
-      })
-    ]);
-    let fondOACI = null, erreursOACI = 0;
-    const lireCle = () => { try { return localStorage.getItem("cleIGN") || ""; } catch (e) { return ""; } };
-    function creerOACI(cle) {
-      erreursOACI = 0;
-      const t = L.tileLayer("https://data.geopf.fr/private/wmts?apikey=" + encodeURIComponent(cle) + "&SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.MAPS.SCAN-OACI&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg", {
-        minZoom: 5, maxZoom: 14, minNativeZoom: 6, maxNativeZoom: 11,
-        attribution: 'Carte OACI © <a href="https://www.sia.aviation-civile.gouv.fr" target="_blank" rel="noopener">SIA</a> / <a href="https://geoservices.ign.fr" target="_blank" rel="noopener">IGN</a>'
-      });
-      t.on("tileerror", () => {
-        if (++erreursOACI === 4) toast("La carte OACI ne se charge pas : clé IGN refusée ou pas de réseau. Touchez OACI longtemps pour changer la clé.", 6000);
-      });
-      return t;
-    }
-    let fond = "ofm";
-    try { fond = localStorage.getItem("cFond") === "oaci" && lireCle() ? "oaci" : "ofm"; } catch (e) {}
-    function appliquerFond() {
-      if (fond === "oaci") {
-        if (!fondOACI) fondOACI = creerOACI(lireCle());
-        ofm.removeLayer(fondOFM); fondOACI.addTo(ofm); fondOACI.bringToBack();
-      } else {
-        if (fondOACI) ofm.removeLayer(fondOACI);
-        fondOFM.addTo(ofm); fondOFM.eachLayer((l) => l.bringToBack && l.bringToBack());
-      }
-      try { localStorage.setItem("cFond", fond); } catch (e) {}
-      const b = document.getElementById("ofmFond");
-      if (b) { b.textContent = fond === "oaci" ? "OFM" : "OACI"; b.title = fond === "oaci" ? "Revenir au fond OFM" : "Carte OACI (IGN)"; }
-    }
-    function demanderCle() {
-      const c = (prompt("Collez votre clé IGN (geoservices.ign.fr → Mes clés).\nElle reste sur ce téléphone.", lireCle()) || "").trim();
-      if (!c) return false;
-      try { localStorage.setItem("cleIGN", c); } catch (e) {}
-      if (fondOACI) { ofm.removeLayer(fondOACI); fondOACI = null; }
-      return true;
-    }
-    function basculerFond() {
-      if (fond === "ofm" && !lireCle() && !demanderCle()) return;
-      fond = fond === "ofm" ? "oaci" : "ofm";
-      appliquerFond();
-    }
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 14, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+    }).addTo(ofm);
+    L.tileLayer("https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest", {
+      minZoom: 6, maxZoom: 14, minNativeZoom: 7, maxNativeZoom: 12,
+      attribution: '© <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a> (OFMA General Users\' License)'
+    }).addTo(ofm);
     let vue = null;
     try { vue = JSON.parse(localStorage.getItem("cVue") || "null"); } catch (e) {}
     if (vue) { ofm.setView([vue.lat, vue.lon], vue.z); dejaCadre = true; }
@@ -946,23 +905,12 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmFond" class="ofm-fond" title="Carte OACI (IGN)">OACI</a><a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
+        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
     });
     ofm.addControl(new Boutons());
-    appliquerFond();
-    (function () {
-      const b = document.getElementById("ofmFond");
-      let minuteur = null, long = false;
-      b.addEventListener("click", (e) => { e.preventDefault(); if (long) { long = false; return; } basculerFond(); });
-      const debut = () => { long = false; minuteur = setTimeout(() => { long = true; if (demanderCle()) { fond = "oaci"; appliquerFond(); } }, 700); };
-      const fin = () => clearTimeout(minuteur);
-      b.addEventListener("touchstart", debut, { passive: true }); b.addEventListener("touchend", fin); b.addEventListener("touchmove", fin);
-      b.addEventListener("mousedown", debut); b.addEventListener("mouseup", fin); b.addEventListener("mouseleave", fin);
-      b.addEventListener("contextmenu", (e) => e.preventDefault());
-    })();
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
     ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
