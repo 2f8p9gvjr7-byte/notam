@@ -915,14 +915,18 @@
         const zone = nordEst ? { n: 50.2, s: 46.3, e: 8.6, w: 3.8 } : null;
         toast("Lecture de la carte Bossy… 0 %", 60000);
         const idx = await FondBossy.importer(f, (p) => toast(`Lecture de la carte Bossy… ${Math.round(p * 100)} %`, 60000), zone);
-        toast(`Carte Bossy enregistrée sur le téléphone${zone ? " (détail Nord-Est)" : ""}. Vous pouvez supprimer le fichier .kmz de Fichiers.`, 6000);
-        fond = "bossy"; appliquerFond();
+        toast(`Carte Bossy enregistrée sur cet appareil${zone ? " (détail Nord-Est)" : ""}. Le fichier .kmz n’est plus nécessaire ici.`, 6000);
+        bossyDispo = true; fond = "bossy"; appliquerFond();
       } catch (e) { toast("Carte Bossy non chargée : " + (e && e.message || e), 6000); }
     });
-    async function basculerFond() {
-      if (fond === "ofm" && !(await FondBossy.present())) {
+    let bossyDispo = false;
+    FondBossy.present().then((ok) => { bossyDispo = ok; });
+    function basculerFond() {
+      // l'ouverture du sélecteur de fichier doit se faire tout de suite après le clic (sinon le navigateur la bloque)
+      if (fond === "ofm" && !bossyDispo) {
+        choixKmz.click();
         toast("Choisissez le fichier CartaBossy .kmz (une seule fois)", 3000);
-        choixKmz.click(); return;
+        return;
       }
       fond = fond === "ofm" ? "bossy" : "ofm";
       appliquerFond();
@@ -952,7 +956,7 @@
       const b = document.getElementById("ofmFond");
       let minuteur = null, long = false;
       b.addEventListener("click", (e) => { e.preventDefault(); if (long) { long = false; return; } basculerFond(); });
-      const debut = () => { long = false; minuteur = setTimeout(() => { long = true; if (confirm("Charger une autre carte Bossy (nouvelle édition) ?")) choixKmz.click(); }, 700); };
+      const debut = () => { long = false; minuteur = setTimeout(() => { long = true; choixKmz.click(); }, 700); };
       const fin = () => clearTimeout(minuteur);
       b.addEventListener("touchstart", debut, { passive: true }); b.addEventListener("touchend", fin); b.addEventListener("touchmove", fin);
       b.addEventListener("mousedown", debut); b.addEventListener("mouseup", fin); b.addEventListener("mouseleave", fin);
