@@ -899,10 +899,9 @@
       if (fond === "bossy") { ofm.removeLayer(coucheOFM); FondBossy.activer(true); }
       else { FondBossy.activer(false); if (!ofm.hasLayer(coucheOFM)) coucheOFM.addTo(ofm); }
       try { localStorage.setItem("cFond", fond); } catch (e) {}
-      const b = document.getElementById("ofmFond");
-      if (b) { b.textContent = fond === "bossy" ? "OFM" : "BOSSY"; b.title = fond === "bossy" ? "Revenir au fond OFM" : "Carte Bossy"; }
+      $("#fondOfm").classList.toggle("actif", fond === "ofm");
+      $("#fondBossy").classList.toggle("actif", fond === "bossy");
     }
-    const choixKmz = document.getElementById("bossyFichier");
     importerKmz = async (f) => {
       if (!f) return;
       if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier .kmz de la CartaBossy", 4000); return; }
@@ -918,16 +917,8 @@
     };
     let bossyDispo = false;
     FondBossy.present().then((ok) => { bossyDispo = ok; majBoutonKmz(); });
-    function basculerFond() {
-      // l'ouverture du sélecteur de fichier doit se faire tout de suite après le clic (sinon le navigateur la bloque)
-      if (fond === "ofm" && !bossyDispo) {
-        choixKmz.click();
-        toast("Choisissez le fichier CartaBossy .kmz (une seule fois)", 3000);
-        return;
-      }
-      fond = fond === "ofm" ? "bossy" : "ofm";
-      appliquerFond();
-    }
+    $("#fondOfm").addEventListener("click", () => { fond = "ofm"; appliquerFond(); });
+    $("#fondBossy").addEventListener("click", () => { fond = "bossy"; appliquerFond(); });
     let vue = null;
     try { vue = JSON.parse(localStorage.getItem("cVue") || "null"); } catch (e) {}
     if (vue) { ofm.setView([vue.lat, vue.lon], vue.z); dejaCadre = true; }
@@ -942,23 +933,13 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmFond" class="ofm-fond" title="Carte Bossy">BOSSY</a><a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
+        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
     });
     ofm.addControl(new Boutons());
     appliquerFond();
-    (function () {
-      const b = document.getElementById("ofmFond");
-      let minuteur = null, long = false;
-      b.addEventListener("click", (e) => { e.preventDefault(); if (long) { long = false; return; } basculerFond(); });
-      const debut = () => { long = false; minuteur = setTimeout(() => { long = true; choixKmz.click(); }, 700); };
-      const fin = () => clearTimeout(minuteur);
-      b.addEventListener("touchstart", debut, { passive: true }); b.addEventListener("touchend", fin); b.addEventListener("touchmove", fin);
-      b.addEventListener("mousedown", debut); b.addEventListener("mouseup", fin); b.addEventListener("mouseleave", fin);
-      b.addEventListener("contextmenu", (e) => e.preventDefault());
-    })();
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
     ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
@@ -1215,7 +1196,7 @@
 
   let importerKmz = null;
   function majBoutonKmz() {
-    FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); });
+    FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); $("#fondBascule").hidden = !ok; $("#fondEdition").hidden = !ok; });
   }
   $("#bossyFichier").addEventListener("change", () => {
     const inp = $("#bossyFichier"), f = inp.files && inp.files[0];

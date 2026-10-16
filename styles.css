@@ -359,3 +359,4 @@ html, body { overflow-x: hidden; }
 .bossy-charger[hidden] { display: none; }
 label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .bossy-charger { cursor: pointer; }
+#fondBascule[hidden], #fondEdition[hidden] { display: none; }

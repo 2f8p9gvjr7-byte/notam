@@ -101,8 +101,13 @@
         </div>
         <div id="ofmRouteInfo" class="route-info"></div>
         <label class="bouton-lien bossy-charger" for="bossyFichier">🗺 Charger ma carte Bossy (fichier .kmz)</label>
+        <div id="fondBascule" class="bascule petite" hidden>
+          <button id="fondOfm" class="actif">🌍 Fond OFM</button>
+          <button id="fondBossy">🗺 Fond Bossy</button>
+        </div>
         <input id="bossyFichier" type="file" hidden>
         <div id="ofmMap" class="ofm-map"></div>
+        <p id="fondEdition" class="note" hidden>Carte Bossy enregistrée sur cet appareil · <label class="lien" for="bossyFichier">charger une autre édition</label></p>
         <button id="ofmQuitter" class="ofm-quitter">✕ Quitter</button>
         <p class="note">Carte aéronautique <b>open flightmaps</b> (cycle AIRAC en cours) — nécessite une connexion ; les zones déjà affichées restent consultables hors connexion. Touchez un numéro pour le détail.</p>
       </div>
@@ -210,7 +215,7 @@
           <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
           <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
           <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>
-          <li><b>BOSSY</b> (en haut à droite) : votre CartaBossy à la place d'OFM, sans calage. La 1ʳᵉ fois, choisissez le fichier <b>.kmz</b> acheté (dans Fichiers) : il est rangé dans le téléphone, hors connexion. Choisissez « Nord-Est seulement » (≈ 45 Mo) pour gagner de la place ; ensuite le fichier .kmz peut être supprimé de Fichiers. Touchez <b>OFM</b> pour revenir ; appui long pour charger une nouvelle édition.</li>
+          <li><b>Carte Bossy</b> : votre CartaBossy à la place d'OFM, sans calage. La 1ʳᵉ fois, touchez « 🗺 Charger ma carte Bossy » et choisissez le fichier <b>.kmz</b> acheté : il est rangé dans l'appareil, hors connexion. Ensuite, passez de l'une à l'autre avec <b>Fond OFM / Fond Bossy</b> au-dessus de la carte. Choisissez « Nord-Est seulement » (≈ 45 Mo) pour gagner de la place ; ensuite le fichier .kmz peut être supprimé de Fichiers. Nouvelle édition : lien « charger une autre édition » sous la carte.</li>
         </ul>
       </details>
 
