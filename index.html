@@ -100,6 +100,8 @@
           <button id="ofmRouteOk">Tracer</button>
         </div>
         <div id="ofmRouteInfo" class="route-info"></div>
+        <label class="bouton-lien bossy-charger" for="bossyFichier">🗺 Charger ma carte Bossy (fichier .kmz)</label>
+        <input id="bossyFichier" type="file" hidden>
         <div id="ofmMap" class="ofm-map"></div>
         <button id="ofmQuitter" class="ofm-quitter">✕ Quitter</button>
         <p class="note">Carte aéronautique <b>open flightmaps</b> (cycle AIRAC en cours) — nécessite une connexion ; les zones déjà affichées restent consultables hors connexion. Touchez un numéro pour le détail.</p>
@@ -116,6 +118,7 @@
         <button id="cPartager" hidden>📤 Partager</button>
         <button id="cCercles" hidden>◯ Cercles</button>
       </div>
+      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Carte OFM</b>, sans capture ni calage.</p>
       <div id="cEtape"></div>
       <div id="cZone" class="carte-zone" hidden>
         <img id="cImg" alt="Capture de carte">

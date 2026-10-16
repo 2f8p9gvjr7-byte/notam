@@ -902,12 +902,8 @@
       const b = document.getElementById("ofmFond");
       if (b) { b.textContent = fond === "bossy" ? "OFM" : "BOSSY"; b.title = fond === "bossy" ? "Revenir au fond OFM" : "Carte Bossy"; }
     }
-    const choixKmz = document.createElement("input");
-    choixKmz.type = "file"; choixKmz.hidden = true;
-    document.body.appendChild(choixKmz);
-    choixKmz.addEventListener("change", async () => {
-      const f = choixKmz.files && choixKmz.files[0];
-      choixKmz.value = "";
+    const choixKmz = document.getElementById("bossyFichier");
+    importerKmz = async (f) => {
       if (!f) return;
       if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier .kmz de la CartaBossy", 4000); return; }
       try {
@@ -918,9 +914,10 @@
         toast(`Carte Bossy enregistrée sur cet appareil${zone ? " (détail Nord-Est)" : ""}. Le fichier .kmz n’est plus nécessaire ici.`, 6000);
         bossyDispo = true; fond = "bossy"; appliquerFond();
       } catch (e) { toast("Carte Bossy non chargée : " + (e && e.message || e), 6000); }
-    });
+      majBoutonKmz();
+    };
     let bossyDispo = false;
-    FondBossy.present().then((ok) => { bossyDispo = ok; });
+    FondBossy.present().then((ok) => { bossyDispo = ok; majBoutonKmz(); });
     function basculerFond() {
       // l'ouverture du sélecteur de fichier doit se faire tout de suite après le clic (sinon le navigateur la bloque)
       if (fond === "ofm" && !bossyDispo) {
@@ -1216,6 +1213,19 @@
     if (a) a.addEventListener("click", (e) => { e.preventDefault(); dejaCadre = false; dessinerOFM(); });
   }
 
+  let importerKmz = null;
+  function majBoutonKmz() {
+    FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); });
+  }
+  $("#bossyFichier").addEventListener("change", () => {
+    const inp = $("#bossyFichier"), f = inp.files && inp.files[0];
+    inp.value = "";
+    if (!f) return;
+    if (mode !== "ofm") choisirMode("ofm");
+    const go = () => (importerKmz ? importerKmz(f) : setTimeout(go, 200));
+    go();
+  });
+  majBoutonKmz();
   function choisirMode(m) {
     mode = m;
     try { localStorage.setItem("cMode", m); } catch (e) {}

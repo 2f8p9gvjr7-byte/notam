@@ -354,3 +354,8 @@ html, body { overflow-x: hidden; }
 .lecture { z-index: 3000; overscroll-behavior: contain; }
 .toast { z-index: 4000; }
 .guide code { background: var(--fond); padding: 2px 6px; border-radius: 6px; font: 13px var(--mono); color: var(--orange); word-break: break-all; }
+
+.bossy-charger { margin: 6px 0 8px; display: inline-block; }
+.bossy-charger[hidden] { display: none; }
+label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
+.bossy-charger { cursor: pointer; }
