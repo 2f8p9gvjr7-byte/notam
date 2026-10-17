@@ -71,9 +71,12 @@ const FondBossy = (() => {
   }
 
   async function importer(f, progres, zone) {
+    const etape = (t) => progres && progres(null, t);
+    etape("lecture du sommaire");
     const liste = await entrees(f);
     const kml = liste.find((e) => /\.kml$/i.test(e.nom));
     if (!kml) throw new Error("pas de carte dans ce fichier");
+    etape("lecture de l'index de la carte");
     const k = await texte(f, kml);
     const re = /<GroundOverlay>[\s\S]*?<href>\s*([^<]+?)\s*<\/href>[\s\S]*?<LatLonBox>([\s\S]*?)<\/LatLonBox>/g;
     const val = (s, t) => { const m = s.match(new RegExp("<" + t + ">\\s*([-\\d.]+)")); return m ? +m[1] : NaN; };
@@ -108,11 +111,11 @@ const FondBossy = (() => {
       for (const t of tuiles.slice(i, i + 20)) {
         const e = parNom.get(t.nom);
         if (!e || e.methode !== 0) continue;
-        lot.push([t.nom, await donnees(f, e)]);
+        lot.push([t.nom, await (await donnees(f, e)).arrayBuffer()]);
         garde.push(t);
       }
       await ecrire("t", lot);
-      progres && progres(Math.min(1, (i + 20) / tuiles.length));
+      progres && progres(Math.min(1, (i + 20) / tuiles.length), "enregistrement");
     }
     if (!garde.length) throw new Error("images illisibles dans ce fichier");
     const idx = { zone: zone || null, nom: f.name, date: Date.now(), niveaux: nbNiv, pas, tuiles: garde.map(({ nom, n, s, e, w, niv }) => ({ nom, n, s, e, w, niv })) };
@@ -146,7 +149,8 @@ const FondBossy = (() => {
     for (const t of voulues) {
       if (affichees.has(t.nom)) continue;
       affichees.set(t.nom, { ov: null, url: null });
-      const blob = await lireObj("t", t.nom);
+      const v = await lireObj("t", t.nom);
+      const blob = v && (v instanceof Blob ? v : new Blob([v], { type: "image/jpeg" }));
       if (!blob || !affichees.has(t.nom) || !actif) { affichees.delete(t.nom); continue; }
       const url = URL.createObjectURL(blob);
       const ov = L.imageOverlay(url, [[t.s, t.w], [t.n, t.e]], { pane: "bossy", interactive: false });

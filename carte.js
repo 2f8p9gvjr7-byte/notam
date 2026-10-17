@@ -908,8 +908,12 @@
       try {
         const nordEst = confirm("Pour gagner de la place, garder le détail seulement pour le Nord-Est (Reims – Dijon – Besançon – Strasbourg – Luxembourg), environ 45 Mo ?\n\nOK = Nord-Est seulement\nAnnuler = France entière (environ 160 Mo)");
         const zone = nordEst ? { n: 50.2, s: 46.3, e: 8.6, w: 3.8 } : null;
-        toast("Lecture de la carte Bossy… 0 %", 60000);
-        const idx = await FondBossy.importer(f, (p) => toast(`Lecture de la carte Bossy… ${Math.round(p * 100)} %`, 60000), zone);
+        let derniere = "début", vu = Date.now();
+        const garde = setInterval(() => { if (Date.now() - vu > 25000) toast(`Lecture bloquée à l'étape « ${derniere} ». Fermez l'appli, rouvrez-la et réessayez ; si ça recommence, faites-moi une capture.`, 60000); }, 5000);
+        const progres = (p, t) => { vu = Date.now(); if (t) derniere = t; toast(`Carte Bossy : ${derniere}${p != null ? " " + Math.round(p * 100) + " %" : "…"}`, 60000); };
+        progres(null, "ouverture du fichier");
+        let idx;
+        try { idx = await FondBossy.importer(f, progres, zone); } finally { clearInterval(garde); }
         toast(`Carte Bossy enregistrée sur cet appareil${zone ? " (détail Nord-Est)" : ""}. Le fichier .kmz n’est plus nécessaire ici.`, 6000);
         bossyDispo = true; fond = "bossy"; appliquerFond();
       } catch (e) { toast("Carte Bossy non chargée : " + (e && e.message || e), 6000); }
