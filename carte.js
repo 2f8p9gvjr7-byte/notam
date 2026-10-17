@@ -1194,6 +1194,68 @@
     if (a) a.addEventListener("click", (e) => { e.preventDefault(); dejaCadre = false; dessinerOFM(); });
   }
 
+  /* ---------- Import d'une route GPX / KML (SkyDemon, Air Mate…) ---------- */
+  function lireRouteFichier(txt) {
+    const doc = new DOMParser().parseFromString(txt, "application/xml");
+    if (doc.querySelector("parsererror")) return null;
+    const tous = (n) => [...doc.getElementsByTagNameNS("*", n)];
+    const nom = (el) => { const x = [...el.children].find((c) => c.localName === "name"); return x ? x.textContent.trim() : ""; };
+    let pts = [];
+    // SkyDemon (.flightplan) : <PrimaryRoute Start="N481559.00 E0070027.00"> puis des éléments To="…"
+    const sd = tous("PrimaryRoute")[0];
+    if (sd) {
+      const conv = (s) => {
+        const m = (s || "").match(/([NS])(\d{2})(\d{2})(\d{2}(?:\.\d+)?)\s+([EW])(\d{3})(\d{2})(\d{2}(?:\.\d+)?)/);
+        if (!m) return null;
+        return { lat: (+m[2] + m[3] / 60 + m[4] / 3600) * (m[1] === "S" ? -1 : 1), lon: (+m[6] + m[7] / 60 + m[8] / 3600) * (m[5] === "W" ? -1 : 1), nom: "" };
+      };
+      const a = conv(sd.getAttribute("Start"));
+      if (a) pts.push(a);
+      [...sd.getElementsByTagName("*")].forEach((e) => { const p = e.getAttribute("To") && conv(e.getAttribute("To")); if (p) { p.nom = e.getAttribute("Name") || e.getAttribute("ToName") || ""; pts.push(p); } });
+    }
+    if (pts.length < 2) pts = [];
+    for (const tag of ["rtept", "wpt", "trkpt"]) {
+      if (pts.length >= 2) break;
+      pts = tous(tag).map((e) => ({ lat: +e.getAttribute("lat"), lon: +e.getAttribute("lon"), nom: nom(e) }));
+    }
+    if (pts.length < 2) {
+      // KML : LineString (ou suite de Placemark/Point)
+      const ls = tous("LineString").map((l) => [...l.children].find((c) => c.localName === "coordinates")).filter(Boolean);
+      if (ls.length) pts = ls[0].textContent.trim().split(/\s+/).map((t) => { const [lon, lat] = t.split(",").map(Number); return { lat, lon, nom: "" }; });
+      else pts = tous("Placemark").map((p) => { const c = p.getElementsByTagNameNS("*", "coordinates")[0]; if (!c) return null; const [lon, lat] = c.textContent.trim().split(",").map(Number); return { lat, lon, nom: nom(p) }; }).filter(Boolean);
+    }
+    pts = pts.filter((p) => isFinite(p.lat) && isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
+    // une trace GPS peut avoir des milliers de points : on n'en garde qu'une partie
+    if (pts.length > 60) { const pas = Math.ceil(pts.length / 60); pts = pts.filter((p, i) => i % pas === 0 || i === pts.length - 1); }
+    const dms = (v, d, pos, neg) => { const a = Math.abs(v), g = Math.floor(a), m = Math.floor((a - g) * 60), s = Math.round(((a - g) * 60 - m) * 60); let G = g, M = m, S = s; if (S === 60) { S = 0; M++; } if (M === 60) { M = 0; G++; } return String(G).padStart(d, "0") + String(M).padStart(2, "0") + String(S).padStart(2, "0") + (v < 0 ? neg : pos); };
+    return pts.map((p) => {
+      const code = (p.nom || "").toUpperCase().match(/\b(LF[A-Z]{2}|E[BDHL][A-Z]{2}|LS[A-Z]{2})\b/);
+      if (code && typeof AERODROMES !== "undefined" && AERODROMES[code[1]]) {
+        const a = AERODROMES[code[1]];
+        if (Math.abs(a[0] - p.lat) < 0.05 && Math.abs(a[1] - p.lon) < 0.07) return code[1];
+      }
+      if (typeof AERODROMES !== "undefined") {
+        for (const k in AERODROMES) { const a = AERODROMES[k]; if (Math.abs(a[0] - p.lat) < 0.015 && Math.abs(a[1] - p.lon) < 0.022) return k; }
+      }
+      return dms(p.lat, 2, "N", "S") + dms(p.lon, 3, "E", "W");
+    });
+  }
+  $("#routeFichier").addEventListener("change", async () => {
+    const inp = $("#routeFichier"), f = inp.files && inp.files[0];
+    inp.value = "";
+    if (!f) return;
+    try {
+      let txt;
+      if (/\.kmz$/i.test(f.name)) { toast("Exportez la route en .gpx ou .kml (pas .kmz)", 4000); return; }
+      txt = await f.text();
+      const r = lireRouteFichier(txt);
+      if (!r || r.length < 2) { toast("Aucune route trouvée dans ce fichier (SkyDemon .flightplan, GPX ou KML attendu)", 4500); return; }
+      $("#ofmRoute").value = r.join(" ");
+      $("#ofmRouteOk").click();
+      toast(`Route importée : ${r.length} points`, 3000);
+    } catch (e) { toast("Fichier illisible : " + (e && e.message || e), 4500); }
+  });
+
   let importerKmz = null;
   function majBoutonKmz() {
     FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); $("#fondBascule").hidden = !ok; $("#fondEdition").hidden = !ok; });

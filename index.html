@@ -98,6 +98,8 @@
         <div class="route-ligne">
           <input id="ofmRoute" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Route : LFGY LFSN (points tournants possibles)">
           <button id="ofmRouteOk">Tracer</button>
+          <label class="route-fichier" for="routeFichier" title="Importer une route SkyDemon (.flightplan), GPX ou KML">📂</label>
+          <input id="routeFichier" type="file" hidden>
         </div>
         <div id="ofmRouteInfo" class="route-info"></div>
         <label class="bouton-lien bossy-charger" for="bossyFichier">🗺 Charger ma carte Bossy (fichier .kmz)</label>
@@ -212,6 +214,7 @@
         <ul>
           <li>Bandeau en haut : votre <b>créneau</b> (heure de Paris). Touchez-le pour le modifier.</li>
           <li><b>Route</b> : codes OACI (LFGY LFSN) ou points ; <b>✎</b> pour ajouter / déplacer / supprimer un point sur la carte.</li>
+          <li><b>📂</b> à droite de Tracer : importez la route de SkyDemon (fichier <b>.flightplan</b>) ou un fichier <b>.gpx</b> / <b>.kml</b> (Air Mate…) ; les points tournants sont repris.</li>
           <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
           <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
           <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>

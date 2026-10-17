@@ -360,3 +360,4 @@ html, body { overflow-x: hidden; }
 label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .bossy-charger { cursor: pointer; }
 #fondBascule[hidden], #fondEdition[hidden] { display: none; }
+.route-fichier { display: flex; align-items: center; justify-content: center; min-width: 44px; background: var(--carte); border: 2px solid var(--bord); border-radius: 10px; font-size: 20px; cursor: pointer; }
