@@ -991,7 +991,13 @@
     let dernierSig = "";
     try { dernierSig = localStorage.getItem("cRouteSig") || ""; } catch (e) {}
     if (sig && sig !== dernierSig) {          // nouveau briefing SOFIA : route reprise de l'en-tête
-      champ.value = [en.de, en.vers].filter(Boolean).join(" ");
+      const actuel = (champ.value || (localStorage.getItem("cRoute") || "")).toUpperCase().split(/[\s,;>\-–→]+/).filter(Boolean);
+      const memeTrajet = actuel.length >= 2 && (!en.de || actuel[0] === en.de) && (!en.vers || actuel[actuel.length - 1] === en.vers);
+      if (!memeTrajet) {
+        const avant = actuel.join(" ");
+        champ.value = [en.de, en.vers].filter(Boolean).join(" ");
+        if (avant && avant !== champ.value) setTimeout(() => toast(`Route remplacée par celle du briefing SOFIA : ${en.de || "?"} → ${en.vers || "?"}`, 5000), 300);
+      }
       try { localStorage.setItem("cRouteSig", sig); localStorage.setItem("cRoute", champ.value); } catch (e) {}
     } else if (!champ.value) {
       try { champ.value = localStorage.getItem("cRoute") || ""; } catch (e) {}
@@ -1251,6 +1257,7 @@
       const r = lireRouteFichier(txt);
       if (!r || r.length < 2) { toast("Aucune route trouvée dans ce fichier (SkyDemon .flightplan, GPX ou KML attendu)", 4500); return; }
       $("#ofmRoute").value = r.join(" ");
+      try { localStorage.setItem("cRoute", r.join(" ")); } catch (e) {}
       $("#ofmRouteOk").click();
       toast(`Route importée : ${r.length} points`, 3000);
     } catch (e) { toast("Fichier illisible : " + (e && e.message || e), 4500); }
