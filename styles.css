@@ -361,3 +361,8 @@ label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .bossy-charger { cursor: pointer; }
 #fondBascule[hidden], #fondEdition[hidden] { display: none; }
 .route-fichier { display: flex; align-items: center; justify-content: center; min-width: 44px; background: var(--carte); border: 2px solid var(--bord); border-radius: 10px; font-size: 20px; cursor: pointer; }
+.sous-onglets { display: flex; gap: 4px; margin: -8px 0 12px; padding: 0 2px; }
+.sous-onglets[hidden] { display: none; }
+.sous-onglets button { flex: 1; border: 1px solid var(--bord); background: transparent; color: var(--doux); border-radius: 18px; padding: 6px 4px; font-size: 13px; font-weight: 600; }
+.sous-onglets button.actif { border-color: var(--orange); color: var(--orange); background: rgba(245,166,35,.12); }
+.onglets button { font-size: 15px; padding: 10px 0; }

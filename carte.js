@@ -494,7 +494,7 @@
   /* Créneau du vol affiché en haut des cartes (touchez-le pour le modifier dans Trier) */
   function texteCreneau() {
     const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null;
-    if (!d || !d.t1) return { html: "🕐 Aucun créneau : réglez le vol dans <b>Trier</b>", passe: false };
+    if (!d || !d.t1) return { html: "🕐 Aucun créneau : réglez le vol dans <b>Briefing</b>", passe: false };
     const passe = d.t2 < Date.now();
     const alt = d.alt ? ` · ≤ ${Number(d.alt).toLocaleString("fr-FR")} ft` : "";
     const prod = d.entete && d.entete.production;
@@ -508,7 +508,7 @@
     if (!b) {
       b = document.createElement("button");
       b.className = "carte-creneau";
-      b.title = "Modifier le créneau dans Trier";
+      b.title = "Modifier le créneau dans Briefing";
       b.addEventListener("click", (e) => { e.stopPropagation(); e.preventDefault(); if (typeof ouvrirOnglet === "function") ouvrirOnglet("trier"); });
       ["mousedown", "touchstart", "dblclick", "pointerdown"].forEach((ev) => b.addEventListener(ev, (e) => e.stopPropagation()));
       parent.appendChild(b);
@@ -682,7 +682,7 @@
     afficherEtape();
     afficherListe();
     const info = $("#cInfo");
-    if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Trier</b>.</p>`;
+    if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Briefing</b>.</p>`;
     else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en noir." : ""}</p>`;
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
@@ -1197,7 +1197,7 @@
 
   function infoOFM() {
     const info = $("#cInfo");
-    if (!items.length) { info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Trier</b>.</p>`; return; }
+    if (!items.length) { info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Briefing</b>.</p>`; return; }
     const places = items.filter((i) => i.forme).length;
     info.innerHTML = `<p class="note">${items.length} NOTAM cochés · ${places} placés sur la carte. <a href="#" id="ofmCadrer">Recadrer sur les NOTAM</a></p>`;
     const a = $("#ofmCadrer");

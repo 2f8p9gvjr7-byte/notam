@@ -25,18 +25,21 @@
   </header>
 
   <nav class="onglets">
-    <button data-tab="decoder" class="actif">Décoder</button>
-    <button data-tab="trier">Trier</button>
-    <button data-tab="carte">Carte</button>
-    <button data-tab="lexique">Lexique</button>
-    <button data-tab="chercher">Chercher</button>
-    <button data-tab="liste">Codes</button>
+    <button data-tab="trier" class="actif">① Briefing</button>
+    <button data-tab="carte">② Carte</button>
+    <button data-tab="outils">③ Outils</button>
+  </nav>
+  <nav class="sous-onglets" hidden>
+    <button data-outil="decoder">Décoder</button>
+    <button data-outil="lexique">Lexique</button>
+    <button data-outil="chercher">Chercher</button>
+    <button data-outil="liste">Codes</button>
   </nav>
 
   <main>
     <!-- Décoder -->
-    <section id="tab-decoder" class="tab actif">
-      <div id="retour" class="retour" hidden><button id="btnRetour">← Retour au tri</button></div>
+    <section id="tab-decoder" class="tab">
+      <div id="retour" class="retour" hidden><button id="btnRetour">← Retour au briefing</button></div>
       <label for="saisie" class="aide">Tapez un code (QRRCA) ou collez le NOTAM entier copié depuis SOFIA</label>
       <div class="champ">
         <textarea id="saisie" rows="1" autocomplete="off" autocapitalize="characters" spellcheck="false"
@@ -51,7 +54,7 @@
     </section>
 
     <!-- Trier un briefing -->
-    <section id="tab-trier" class="tab">
+    <section id="tab-trier" class="tab actif">
       <p class="aide">Collez tout le briefing SOFIA et réglez votre vol : l'appli met de côté ce qui ne vous concerne pas.</p>
       <div class="reglages">
         <label>Départ (heure de Paris)<input id="tDep" type="datetime-local"></label>
@@ -193,7 +196,7 @@
           <li><b>SkyDemon</b> (facultatif) : préparez la nav, puis exportez le plan de vol (fichier <b>.flightplan</b>) dans Fichiers. Appli → <b>Carte → 📂</b> : la route s'affiche avec ses points tournants.</li>
           <li>Dans l'appli, touchez <b>🌐 SOFIA</b> (en haut) et faites votre briefing (PIB trajet) <b>pour la date du vol</b>, même départ et même arrivée.</li>
           <li>Sur la page du briefing : <b>Partager</b> (carré avec flèche) → <b>faites défiler tout en bas</b> → <b>Copier SOFIA</b> (la 1ʳᵉ fois : Autoriser). Sur PC : <b>Ctrl+A</b> puis <b>Ctrl+C</b>.</li>
-          <li>Appli → <b>Trier → 📋 Coller</b> (sur PC : clic dans le cadre puis <b>Ctrl+V</b>) : heure, durée et plafond sont repris ; la route SkyDemon est gardée si le départ et l'arrivée sont les mêmes.</li>
+          <li>Appli → <b>Briefing → 📋 Coller</b> (sur PC : clic dans le cadre puis <b>Ctrl+V</b>) : heure, durée et plafond sont repris ; la route SkyDemon est gardée si le départ et l'arrivée sont les mêmes.</li>
           <li><b>Vérifiez la date</b> dans le bandeau de la carte. Message « Route remplacée par celle du briefing SOFIA » ? Le briefing collé ne correspond pas à votre nav : refaites-le.</li>
           <li>Ajustez la <b>durée réelle</b> du vol (SOFIA met souvent 12 h).</li>
           <li>Lisez <b>« À lire »</b> : le plus important est en haut (zones R, avertissements W, GNSS, obstacles).</li>
@@ -202,7 +205,7 @@
         </ol>
       </details>
 
-      <details><summary>2. Onglet Trier</summary>
+      <details><summary>2. Onglet Briefing</summary>
         <ul>
           <li><b>À lire</b> : NOTAM actifs pendant votre vol et sous votre altitude, cochés par défaut.</li>
           <li><b>Écartés</b> : hors créneau, au-dessus de vous, IFR seul, administratif, ou déclencheur TT « activable par NOTAM ». Jetez-y un œil.</li>
@@ -212,7 +215,7 @@
         </ul>
       </details>
 
-      <details><summary>3. Onglet Carte — OFM</summary>
+      <details><summary>3. Onglet Carte</summary>
         <ul>
           <li>Bandeau en haut : votre <b>créneau</b> (heure de Paris). Touchez-le pour le modifier.</li>
           <li><b>Route</b> : codes OACI (LFGY LFSN) ou points ; <b>✎</b> pour ajouter / déplacer / supprimer un point sur la carte.</li>
@@ -246,7 +249,7 @@
         <p>Repères décalés ? Un degré mal saisi : <b>↺ Recaler</b>.</p>
       </details>
 
-      <details><summary>6. Décoder, Lexique, Chercher, Codes</summary>
+      <details><summary>6. Onglet Outils : Décoder, Lexique, Chercher, Codes</summary>
         <ul>
           <li><b>Décoder</b> : un code Q (QRRCA) ou un NOTAM entier → explication et « en vigueur maintenant ? ».</li>
           <li><b>Lexique</b> : abréviations (PPR, HJ, RDL…).</li>

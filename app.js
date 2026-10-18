@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.2";
+const APP_VERSION = "4.9.3";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -22,12 +22,23 @@ function fPlage(a, b) {
 }
 
 /* ---------- Onglets ---------- */
+/* 3 onglets : Briefing (trier), Carte, Outils (décoder, lexique, chercher, codes) */
+const OUTILS = ["decoder", "lexique", "chercher", "liste"];
+let dernierOutil = "decoder";
+try { const o = localStorage.getItem("outil"); if (OUTILS.includes(o)) dernierOutil = o; } catch (e) {}
 document.querySelectorAll(".onglets button").forEach((b) => {
-  b.addEventListener("click", () => ouvrirOnglet(b.dataset.tab));
+  b.addEventListener("click", () => ouvrirOnglet(b.dataset.tab === "outils" ? dernierOutil : b.dataset.tab));
+});
+document.querySelectorAll(".sous-onglets button").forEach((b) => {
+  b.addEventListener("click", () => ouvrirOnglet(b.dataset.outil));
 });
 function ouvrirOnglet(nom) {
-  if (!document.getElementById("tab-" + nom)) nom = "decoder";
-  document.querySelectorAll(".onglets button").forEach((x) => x.classList.toggle("actif", x.dataset.tab === nom));
+  if (!document.getElementById("tab-" + nom)) nom = "trier";
+  const outil = OUTILS.includes(nom);
+  if (outil) { dernierOutil = nom; try { localStorage.setItem("outil", nom); } catch (e) {} }
+  document.querySelectorAll(".onglets button").forEach((x) => x.classList.toggle("actif", outil ? x.dataset.tab === "outils" : x.dataset.tab === nom));
+  document.querySelector(".sous-onglets").hidden = !outil;
+  document.querySelectorAll(".sous-onglets button").forEach((x) => x.classList.toggle("actif", x.dataset.outil === nom));
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("actif", x.id === "tab-" + nom));
   try { localStorage.setItem("onglet", nom); } catch (e) {}
   if (nom === "carte" && window.majCarte) window.majCarte();
@@ -777,10 +788,9 @@ try {
 
 /* ---------- Restauration ---------- */
 try {
-  const o = localStorage.getItem("onglet");
-  if (o) ouvrirOnglet(o);
   const d = localStorage.getItem("derniere");
   if (d) { saisie.value = d; afficher(); }
+  ouvrirOnglet("trier");   // l'appli s'ouvre toujours sur le Briefing
 } catch (e) {}
 
 /* ---------- Service worker : hors connexion + mise à jour automatique ----------
