@@ -90,8 +90,12 @@
     <!-- Carte -->
     <section id="tab-carte" class="tab">
       <div class="bascule">
-        <button id="modeOfm" class="actif">🌍 Carte OFM</button>
+        <button id="modeOfm" class="actif">🗺 Carte numérique</button>
         <button id="modeCapture">🖼 Ma capture</button>
+      </div>
+      <div id="fondBascule" class="bascule petite fond-bascule">
+        <button id="fondOfm" class="actif">🌍 OFM</button>
+        <button id="fondBossy">🗺 Bossy</button>
       </div>
       <details id="zonesBloc" class="zones-bloc">
         <summary>🟪 Mes zones <span id="zonesNb"></span></summary>
@@ -105,11 +109,7 @@
           <input id="routeFichier" type="file" hidden>
         </div>
         <div id="ofmRouteInfo" class="route-info"></div>
-        <label class="bouton-lien bossy-charger" for="bossyFichier">🗺 Charger ma carte Bossy (fichier .kmz)</label>
-        <div id="fondBascule" class="bascule petite" hidden>
-          <button id="fondOfm" class="actif">🌍 Fond OFM</button>
-          <button id="fondBossy">🗺 Fond Bossy</button>
-        </div>
+
         <input id="bossyFichier" type="file" hidden>
         <div id="ofmMap" class="ofm-map"></div>
         <p id="fondEdition" class="note" hidden>Carte Bossy enregistrée sur cet appareil · <label class="lien" for="bossyFichier">charger une autre édition</label></p>
@@ -128,7 +128,7 @@
         <button id="cPartager" hidden>📤 Partager</button>
         <button id="cCercles" hidden>◯ Cercles</button>
       </div>
-      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Carte OFM</b>, sans capture ni calage.</p>
+      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Carte numérique → Bossy</b>, sans capture ni calage.</p>
       <div id="cEtape"></div>
       <div id="cZone" class="carte-zone" hidden>
         <img id="cImg" alt="Capture de carte">
@@ -223,7 +223,7 @@
           <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
           <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
           <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>
-          <li><b>Carte Bossy</b> : votre CartaBossy à la place d'OFM, sans calage. La 1ʳᵉ fois, touchez « 🗺 Charger ma carte Bossy » et choisissez le fichier <b>.kmz</b> acheté : il est rangé dans l'appareil, hors connexion. Ensuite, passez de l'une à l'autre avec <b>Fond OFM / Fond Bossy</b> au-dessus de la carte. Choisissez « Nord-Est seulement » (≈ 45 Mo) pour gagner de la place ; ensuite le fichier .kmz peut être supprimé de Fichiers. Nouvelle édition : lien « charger une autre édition » sous la carte.</li>
+          <li><b>Carte numérique → OFM / Bossy</b> : votre CartaBossy à la place d'OFM, sans calage. La 1ʳᵉ fois, touchez <b>Bossy</b> et choisissez le fichier <b>.kmz</b> acheté : il est rangé dans l'appareil, hors connexion. Ensuite, passez de l'une à l'autre avec <b>OFM / Bossy</b>. Choisissez « Nord-Est seulement » (≈ 45 Mo) pour gagner de la place ; ensuite le fichier .kmz peut être supprimé de Fichiers. Nouvelle édition : lien « charger une autre édition » sous la carte.</li>
         </ul>
       </details>
 

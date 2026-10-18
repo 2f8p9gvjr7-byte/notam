@@ -683,7 +683,7 @@
     afficherListe();
     const info = $("#cInfo");
     if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Briefing</b>.</p>`;
-    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de l'onglet Carte OFM tracée en noir." : ""}</p>`;
+    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de la carte numérique tracée en noir." : ""}</p>`;
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
     $("#cCercles").hidden = !(image && cal);
@@ -922,7 +922,10 @@
     let bossyDispo = false;
     FondBossy.present().then((ok) => { bossyDispo = ok; majBoutonKmz(); });
     $("#fondOfm").addEventListener("click", () => { fond = "ofm"; appliquerFond(); });
-    $("#fondBossy").addEventListener("click", () => { fond = "bossy"; appliquerFond(); });
+    $("#fondBossy").addEventListener("click", () => {
+      if (!bossyDispo) { $("#bossyFichier").click(); toast("Choisissez le fichier CartaBossy .kmz (une seule fois)", 3500); return; }
+      fond = "bossy"; appliquerFond();
+    });
     let vue = null;
     try { vue = JSON.parse(localStorage.getItem("cVue") || "null"); } catch (e) {}
     if (vue) { ofm.setView([vue.lat, vue.lon], vue.z); dejaCadre = true; }
@@ -1269,7 +1272,7 @@
 
   let importerKmz = null;
   function majBoutonKmz() {
-    FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); $("#fondBascule").hidden = !ok; $("#fondEdition").hidden = !ok; });
+    FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); $("#fondEdition").hidden = !ok; $("#fondBossy").textContent = ok ? "🗺 Bossy" : "🗺 Bossy (charger…)"; });
   }
   $("#bossyFichier").addEventListener("change", () => {
     const inp = $("#bossyFichier"), f = inp.files && inp.files[0];
@@ -1287,6 +1290,7 @@
     $("#modeCapture").classList.toggle("actif", m === "capture");
     $("#ofmBloc").hidden = m !== "ofm";
     $("#captureBloc").hidden = m !== "capture";
+    $("#fondBascule").hidden = m !== "ofm";
     rafraichir();
   }
   $("#ofmRouteOk").addEventListener("click", () => {
@@ -1302,6 +1306,7 @@
   /* ---------- Au démarrage : capture mémorisée ---------- */
   $("#ofmBloc").hidden = mode !== "ofm";
   $("#captureBloc").hidden = mode !== "capture";
+  $("#fondBascule").hidden = mode !== "ofm";
   $("#modeOfm").classList.toggle("actif", mode === "ofm");
   $("#modeCapture").classList.toggle("actif", mode === "capture");
   afficherZones();

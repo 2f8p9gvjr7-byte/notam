@@ -360,6 +360,7 @@ html, body { overflow-x: hidden; }
 label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .bossy-charger { cursor: pointer; }
 #fondBascule[hidden], #fondEdition[hidden] { display: none; }
+.fond-bascule { margin-top: -6px; }
 .route-fichier { display: flex; align-items: center; justify-content: center; min-width: 44px; background: var(--carte); border: 2px solid var(--bord); border-radius: 10px; font-size: 20px; cursor: pointer; }
 .sous-onglets { display: flex; gap: 4px; margin: -8px 0 12px; padding: 0 2px; }
 .sous-onglets[hidden] { display: none; }
