@@ -1227,6 +1227,12 @@
       [...sd.getElementsByTagName("*")].forEach((e) => { const p = e.getAttribute("To") && conv(e.getAttribute("To")); if (p) { p.nom = e.getAttribute("Name") || e.getAttribute("ToName") || ""; pts.push(p); } });
     }
     if (pts.length < 2) pts = [];
+    // Garmin .fpl : <route-point><waypoint-identifier> → <waypoint> lat/lon
+    if (pts.length < 2 && tous("route-point").length >= 2) {
+      const wp = {};
+      tous("waypoint").forEach((w) => { const g = (n) => { const x = w.getElementsByTagNameNS("*", n)[0]; return x ? x.textContent.trim() : ""; }; wp[g("identifier")] = { lat: +g("lat"), lon: +g("lon"), nom: g("identifier") }; });
+      pts = tous("route-point").map((r) => { const x = r.getElementsByTagNameNS("*", "waypoint-identifier")[0]; return x && wp[x.textContent.trim()]; }).filter(Boolean);
+    }
     for (const tag of ["rtept", "wpt", "trkpt"]) {
       if (pts.length >= 2) break;
       pts = tous(tag).map((e) => ({ lat: +e.getAttribute("lat"), lon: +e.getAttribute("lon"), nom: nom(e) }));
@@ -1238,6 +1244,17 @@
       else pts = tous("Placemark").map((p) => { const c = p.getElementsByTagNameNS("*", "coordinates")[0]; if (!c) return null; const [lon, lat] = c.textContent.trim().split(",").map(Number); return { lat, lon, nom: nom(p) }; }).filter(Boolean);
     }
     pts = pts.filter((p) => isFinite(p.lat) && isFinite(p.lon) && Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180);
+    // points alignés (profil de montée, trace) : on ne garde que les changements de cap
+    if (pts.length > 2) {
+      const cap = (a, b) => Math.atan2((b.lon - a.lon) * Math.cos(a.lat * Math.PI / 180), b.lat - a.lat) * 180 / Math.PI;
+      const garde = [pts[0]];
+      for (let i = 1; i < pts.length - 1; i++) {
+        const d = Math.abs(((cap(garde[garde.length - 1], pts[i]) - cap(pts[i], pts[i + 1])) + 540) % 360 - 180);
+        if (d > 4 || pts[i].nom) garde.push(pts[i]);
+      }
+      garde.push(pts[pts.length - 1]);
+      pts = garde;
+    }
     // une trace GPS peut avoir des milliers de points : on n'en garde qu'une partie
     if (pts.length > 60) { const pas = Math.ceil(pts.length / 60); pts = pts.filter((p, i) => i % pas === 0 || i === pts.length - 1); }
     const dms = (v, d, pos, neg) => { const a = Math.abs(v), g = Math.floor(a), m = Math.floor((a - g) * 60), s = Math.round(((a - g) * 60 - m) * 60); let G = g, M = m, S = s; if (S === 60) { S = 0; M++; } if (M === 60) { M = 0; G++; } return String(G).padStart(d, "0") + String(M).padStart(2, "0") + String(S).padStart(2, "0") + (v < 0 ? neg : pos); };
