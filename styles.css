@@ -266,7 +266,7 @@ h1 { white-space: nowrap; }
 .ofm-boutons a { font-size: 18px; line-height: 30px !important; color: #222 !important; text-decoration: none; }
 .ofm-boutons a.off { color: #bbb !important; text-decoration: line-through; }
 #ofmBloc.plein { position: fixed; inset: 0; z-index: 40; background: var(--fond); padding: 0; margin: 0; }
-#ofmBloc.plein .route-ligne, #ofmBloc.plein .route-info, #ofmBloc.plein .note { display: none; }
+#ofmBloc.plein .route-ligne, #ofmBloc.plein .route-info, #ofmBloc.plein .note, #ofmBloc.plein .route-actions, #ofmBloc.plein #fondEdition { display: none !important; }
 #ofmBloc.plein .ofm-map { height: 100vh; height: 100dvh; border-radius: 0; border: 0; }
 
 .toast { z-index: 60; }
