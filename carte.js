@@ -466,7 +466,7 @@
     p.querySelectorAll(".zone-ligne button").forEach((b) => b.addEventListener("click", () => {
       const id = b.closest(".zone-ligne").dataset.id, z = zones.find((x) => x.id === id);
       const act = b.dataset.act;
-      if (act === "voir") { if (z.visible === false) { z.visible = true; sauverZones(); } afficherZones(); voirZone(z); }
+      if (act === "voir") { if (z.visible === false) { z.visible = true; sauverZones(); } afficherZones(); voirZone(z); const m = document.getElementById(mode === "ofm" ? "ofmMap" : "cZone"); if (m) m.scrollIntoView({ behavior: "smooth", block: "center" }); }
       if (act === "masquer") { z.visible = z.visible === false; sauverZones(); afficherZones(); rafraichir(); }
       if (act === "modifier") { zoneEditee = id; afficherZones(); rafraichir(); }
       if (act === "suppr" && confirm(`Supprimer la zone « ${z.nom || "Zone"} » ?`)) { zones = zones.filter((x) => x.id !== id); sauverZones(); afficherZones(); rafraichir(); }
