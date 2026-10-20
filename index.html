@@ -98,12 +98,19 @@
         <button id="fondOfm" class="actif">🌍 OFM</button>
         <button id="fondBossy">🗺 Bossy</button>
       </div>
+      <details id="zonesBloc" class="zones-bloc">
+        <summary>🟪 Mes zones <span id="zonesNb"></span></summary>
+        <div id="zonesPanneau"></div>
+      </details>
       <div id="ofmBloc">
-        <div class="route-ligne">
-          <input id="ofmRoute" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Route : LFGY LFSN (points tournants possibles)">
-          <button id="ofmRouteOk">Tracer</button>
-          <label class="route-fichier" for="routeFichier" title="Importer une route SkyDemon (.flightplan), GPX ou KML">📂</label>
+        <div class="route-actions">
+          <button id="routeModifier">✎ Modifier la route</button>
+          <label class="route-fichier" for="routeFichier">📂 Importer SkyDemon</label>
           <input id="routeFichier" type="file" hidden>
+        </div>
+        <div class="route-ligne" hidden>
+          <input id="ofmRoute" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Tapez la route : LFGY LFSN">
+          <button id="ofmRouteOk">Tracer</button>
         </div>
         <div id="ofmRouteInfo" class="route-info"></div>
 
@@ -132,10 +139,6 @@
         <svg id="cSvg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
       </div>
-      <details id="zonesBloc" class="zones-bloc">
-        <summary>🟪 Mes zones <span id="zonesNb"></span></summary>
-        <div id="zonesPanneau"></div>
-      </details>
       <div id="cInfo"></div>
       <div id="cListe"></div>
     </section>
@@ -194,7 +197,7 @@
 
       <details open><summary>1. Avant chaque vol : la routine</summary>
         <ol>
-          <li><b>SkyDemon</b> (facultatif) : préparez la nav, puis exportez le plan de vol (fichier <b>.flightplan</b>) dans Fichiers. Appli → <b>Carte → 📂</b> : la route s'affiche avec ses points tournants.</li>
+          <li><b>SkyDemon</b> (facultatif) : préparez la nav, puis exportez le plan de vol (fichier <b>.flightplan</b>) dans Fichiers. Appli → <b>Carte → 📂 Importer SkyDemon</b> : la route s'affiche avec ses points tournants.</li>
           <li>Dans l'appli, touchez <b>🌐 SOFIA</b> (en haut) et faites votre briefing (PIB trajet) <b>pour la date du vol</b>, même départ et même arrivée.</li>
           <li>Sur la page du briefing : <b>Partager</b> (carré avec flèche) → <b>faites défiler tout en bas</b> → <b>Copier SOFIA</b> (la 1ʳᵉ fois : Autoriser). Sur PC : <b>Ctrl+A</b> puis <b>Ctrl+C</b>.</li>
           <li>Appli → <b>Briefing → 📋 Coller le briefing SOFIA</b> (sur PC : clic dans le cadre puis <b>Ctrl+V</b>) : heure, durée et plafond sont repris ; la route SkyDemon est gardée si le départ et l'arrivée sont les mêmes.</li>
@@ -219,8 +222,8 @@
       <details><summary>3. Onglet Carte</summary>
         <ul>
           <li>Bandeau en haut : votre <b>créneau</b> (heure de Paris). Touchez-le pour le modifier.</li>
-          <li><b>Route</b> : codes OACI (LFGY LFSN) ou points ; <b>✎</b> pour ajouter / déplacer / supprimer un point sur la carte.</li>
-          <li><b>📂</b> à droite de Tracer : importez la route de SkyDemon (fichier <b>.flightplan</b>) ou un fichier <b>.gpx</b> / <b>.kml</b> (Air Mate…) ; les points tournants sont repris.</li>
+          <li><b>Route</b> : reprise du briefing SOFIA ou de SkyDemon. <b>✎ Modifier la route</b> pour la taper (codes OACI : LFGY LFSN) ; le <b>✎</b> sur la carte pour ajouter / déplacer / supprimer un point du doigt.</li>
+          <li><b>📂 Importer SkyDemon</b> : importez la route de SkyDemon (fichier <b>.flightplan</b>) ou un fichier <b>.gpx</b> / <b>.kml</b> (Air Mate…) ; les points tournants sont repris.</li>
           <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
           <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
           <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>

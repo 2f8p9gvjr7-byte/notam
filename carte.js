@@ -1123,6 +1123,7 @@
       info.innerHTML = ligneLocal + ` <small>· pour un circuit, ✎ puis touchez la carte</small>`
         + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "");
       brancherRayon();
+      majRouteUI();
       return;
     }
     let total = 0;
@@ -1136,6 +1137,7 @@
       + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "")
       + (ligneLocal ? `<div class="ligne-local">${ligneLocal}</div>` : "");
     brancherRayon();
+    majRouteUI();
   }
 
   function popupHTML(it) {
@@ -1310,9 +1312,17 @@
     $("#fondBascule").hidden = m !== "ofm";
     rafraichir();
   }
+  var routeEdition = false;
+  function majRouteUI() {
+    const vide = !$("#ofmRoute").value.trim();
+    $(".route-ligne").hidden = !(routeEdition || vide);
+    $("#routeModifier").hidden = routeEdition || vide;
+  }
+  $("#routeModifier").addEventListener("click", () => { routeEdition = true; majRouteUI(); const r = $("#ofmRoute"); r.focus(); r.select(); });
   $("#ofmRouteOk").addEventListener("click", () => {
     try { localStorage.setItem("cRoute", $("#ofmRoute").value); } catch (e) {}
-    dejaCadre = false; dessinerOFM(); $("#ofmRoute").blur();
+    routeEdition = false;
+    dejaCadre = false; dessinerOFM(); $("#ofmRoute").blur(); majRouteUI();
   });
   $("#ofmRoute").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#ofmRouteOk").click(); });
   $("#ofmQuitter").addEventListener("click", () => { if ($("#ofmBloc").classList.contains("plein")) basculerPlein(); });
@@ -1320,6 +1330,7 @@
   $("#modeCapture").addEventListener("click", () => choisirMode("capture"));
   window.addEventListener("resize", () => { if (ofm) ofm.invalidateSize(); });
 
+  majRouteUI();
   /* ---------- Au démarrage : capture mémorisée ---------- */
   $("#ofmBloc").hidden = mode !== "ofm";
   $("#captureBloc").hidden = mode !== "capture";

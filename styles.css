@@ -368,3 +368,7 @@ label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .sous-onglets button.actif { border-color: var(--orange); color: var(--orange); background: rgba(245,166,35,.12); }
 .onglets button { font-size: 15px; padding: 10px 0; }
 .gros-coller { width: 100%; border: 0; background: var(--orange); color: #1a1a1a; font-size: 17px; font-weight: 700; padding: 14px; border-radius: 12px; margin: 2px 0 8px; }
+.route-ligne[hidden] { display: none; }
+.route-actions { display: flex; gap: 8px; margin-bottom: 6px; }
+.route-actions button, .route-actions .route-fichier { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 10px; padding: 9px 6px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 0; }
+.route-actions button[hidden] { display: none; }
