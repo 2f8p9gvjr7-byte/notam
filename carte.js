@@ -1314,9 +1314,9 @@
   }
   var routeEdition = false;
   function majRouteUI() {
-    const vide = !$("#ofmRoute").value.trim();
-    $(".route-ligne").hidden = !(routeEdition || vide);
-    $("#routeModifier").hidden = routeEdition || vide;
+    // la route vient de SOFIA ou de SkyDemon : la saisie manuelle reste cachée
+    $(".route-ligne").hidden = !routeEdition;
+    $("#routeModifier").hidden = true;
   }
   $("#routeModifier").addEventListener("click", () => { routeEdition = true; majRouteUI(); const r = $("#ofmRoute"); r.focus(); r.select(); });
   $("#ofmRouteOk").addEventListener("click", () => {

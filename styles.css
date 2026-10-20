@@ -372,3 +372,4 @@ label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .route-actions { display: flex; gap: 8px; margin-bottom: 6px; }
 .route-actions button, .route-actions .route-fichier { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 10px; padding: 9px 6px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 0; }
 .route-actions button[hidden] { display: none; }
+.route-actions .route-fichier { flex: 1 1 100%; }
