@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.10";
+const APP_VERSION = "4.9.11";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -384,6 +384,23 @@ function majCompteur() {
   const l = $("#btnLire");
   if (l) l.textContent = `📖 Lire à l'écran (${nb})`;
 }
+
+/* RTBA actif pendant le vol, d'après le NOTAM SOFIA « ZONES AIRFORCE RTBA ACT » */
+function rtbaPendant(r, t1, t2) {
+  const tous = [...r.garder, ...Object.values(r.ecarter).flat()];
+  const z = {};
+  tous.forEach((n) => lireRTBA(n).forEach((c) => { if (c.b > t1 && c.a < t2) (z[c.zone] = z[c.zone] || []).push([c.a, c.b]); }));
+  return z;
+}
+function htmlRTBA(z) {
+  const noms = Object.keys(z || {});
+  if (!noms.length) return "";
+  // branches regroupées par horaires identiques : « R45A, B, C 10:00→12:00 »
+  const groupes = new Map();
+  noms.forEach((n) => { const k = z[n].map(([a, b]) => `${fHeure(Math.max(a, dernierTri ? 0 : a))}→${fHeure(b)}`).join(", "); (groupes.get(k) || groupes.set(k, []).get(k)).push(n); });
+  const court = (liste) => liste.map((n, i) => { const m = n.match(/^(R\d+)(.*)$/); return i && m && liste[0].startsWith(m[1]) ? m[2] : n; }).join(", ");
+  return `<div class="rtba-ligne">⚠ <b>RTBA actif pendant votre vol</b> : ${[...groupes].map(([k, l]) => `<b>${esc(court(l))}</b> ${k}`).join(" · ")} <small>(heure de Paris) — votre trait coupe-t-il ces branches ?</small></div>`;
+}
 function trier() {
   try { trierInterne(); }
   catch (err) {
@@ -427,7 +444,9 @@ function trierInterne() {
     <button id="btnLire" class="btn-lire">📖 Lire à l'écran</button>
     <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM cochés</button>
   </div>`;
-  dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete };
+  dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete, rtba: rtbaPendant(r, trier.t1, trier.t2) };
+  const lr = htmlRTBA(dernierTri.rtba);
+  if (lr) html = html.replace('<div class="creneau">Cochez', lr + '<div class="creneau">Cochez');
   chargerJsPDF();
 
   html += `<h2 class="section">À LIRE</h2>`;

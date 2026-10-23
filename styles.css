@@ -373,3 +373,6 @@ label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .route-actions button, .route-actions .route-fichier { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 10px; padding: 9px 6px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 0; }
 .route-actions button[hidden] { display: none; }
 .route-actions .route-fichier { flex: 1 1 100%; }
+.rtba-ligne { color: #ff8a80; background: rgba(229,57,53,.12); border: 1px solid rgba(229,57,53,.5); border-radius: 10px; padding: 7px 10px; margin: 6px 0 8px; font-size: 14px; line-height: 1.4; }
+.rtba-ligne small { color: var(--doux); }
+#rtbaCarte[hidden] { display: none; }

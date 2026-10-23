@@ -1014,4 +1014,33 @@ function trierBriefing(texte, depart, dureeMin, altMax) {
   return res;
 }
 
-if (typeof module !== "undefined") module.exports = { decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, lireEntetePIB, SUJETS, ETATS, FAMILLES, LEXIQUE };
+
+/* RTBA : NOTAM « ZONES AIRFORCE RTBA ACT » → créneaux par branche (UTC)
+   ZONE R45A BOURGOGNE / 0800-1000:ACTIVE / 1733-2259:ACTIVE … */
+function lireRTBA(n) {
+  const E = ((n && n.champs && n.champs.E) || "").toUpperCase();
+  if (!/RTBA/.test(E) || n.debut == null) return [];
+  const j0 = new Date(n.debut), jours = [];
+  const fin = n.fin && isFinite(n.fin) ? n.fin : n.debut;
+  for (let d = Date.UTC(j0.getUTCFullYear(), j0.getUTCMonth(), j0.getUTCDate()); d <= fin && jours.length < 4; d += 86400000) jours.push(d);
+  const res = [];
+  let zone = null;
+  for (const ligne of E.split(/\n|(?=ZONE\s+R)/)) {
+    const z = ligne.match(/ZONE\s+(R\s?\d+[A-Z0-9.]*)/);
+    if (z) zone = z[1].replace(/\s/g, "");
+    if (!zone) continue;
+    const re = /(\d{2})(\d{2})\s*-\s*(\d{2})(\d{2})\s*:?\s*ACTIV/g;
+    let m;
+    while ((m = re.exec(ligne))) {
+      for (const d of jours) {
+        let a = d + (+m[1] * 60 + +m[2]) * 60000, b = d + (+m[3] * 60 + +m[4]) * 60000;
+        if (m[3] + m[4] === "2359") b += 60000;
+        if (b <= a) b += 86400000;
+        if (b > n.debut && a < fin + 60000) res.push({ zone, a, b });
+      }
+    }
+  }
+  return res;
+}
+
+if (typeof module !== "undefined") module.exports = { lireRTBA, decoder, rechercher, chercherLexique, estNotamComplet, lireChamps, evaluerNotam, lireLimite, soleil, trierBriefing, decouperBriefing, plagesEntre, lireEntetePIB, SUJETS, ETATS, FAMILLES, LEXIQUE };

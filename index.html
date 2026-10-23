@@ -98,6 +98,7 @@
         <button id="fondOfm" class="actif">🌍 OFM</button>
         <button id="fondBossy">🗺 Bossy</button>
       </div>
+      <div id="rtbaCarte" hidden></div>
       <details id="zonesBloc" class="zones-bloc">
         <summary>🟪 Mes zones <span id="zonesNb"></span></summary>
         <div id="zonesPanneau"></div>
@@ -265,7 +266,7 @@
       <details><summary>7. Bon à savoir</summary>
         <ul>
           <li>NOTAM et AZBA sont en <b>UTC</b> ; l'appli affiche l'heure de Paris (UTC +2 l'été, +1 l'hiver).</li>
-          <li>Le <b>RTBA</b> du jour figure aussi dans un NOTAM (« ZONES AIRFORCE RTBA ACT », zones et horaires en UTC), mais sans tracé : l'appli ne peut pas le dessiner. Le tracé est sur l'AZBA ou SkyDemon.</li>
+          <li>Le <b>RTBA</b> du jour figure aussi dans un NOTAM SOFIA (« ZONES AIRFORCE RTBA ACT ») : l'appli en tire une ligne rouge « RTBA actif pendant votre vol » avec les branches et les horaires. Le tracé des branches est sur la Bossy / OFM ; vérifiez si votre trait les coupe.</li>
           <li><b>TT</b> = déclencheur de SUP AIP, pas une activation.</li>
           <li>Vos données (briefing, zones, captures) restent <b>sur ce téléphone</b>.</li>
           <li>L'appli se met à jour toute seule : le numéro de version est affiché en bas.</li>

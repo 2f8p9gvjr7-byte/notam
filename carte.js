@@ -502,7 +502,15 @@
     const ligne2 = vieux ? `<br><small>⚠ Briefing SOFIA du ${fDate(prod)} : à refaire</small>` : "";
     return { html: `${passe ? "⚠ Créneau passé · " : "🕐 "}${fPlage(d.t1, d.t2)}${alt}${ligne2}`, passe: passe || vieux };
   }
+  function majRTBA() {
+    const el = document.getElementById("rtbaCarte");
+    if (!el) return;
+    const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null;
+    const h = d && typeof htmlRTBA === "function" ? htmlRTBA(d.rtba) : "";
+    el.innerHTML = h; el.hidden = !h;
+  }
   function bandeauCreneau(parent) {
+    majRTBA();
     if (!parent) return;
     let b = parent.querySelector(":scope > .carte-creneau");
     if (!b) {
