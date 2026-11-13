@@ -271,6 +271,23 @@
   let dessinZone = false;          // toucher la carte ajoute un point à la zone en cours d'édition
   let zoneEditee = null;           // id de la zone ouverte dans le formulaire (ou "nouvelle")
   const COULEURS_ZONE = ["#8e24aa", "#e65100", "#c62828", "#1565c0", "#2e7d32", "#5d4037"];
+  /* Période de validité (dates du SUP AIP) comparée au jour du vol réglé dans Briefing, sinon à aujourd'hui */
+  const jourZ = (iso) => { const [a, m, j] = iso.split("-"); return `${j}/${m}/${a}`; };
+  function refVol() { const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null; return d && d.t1 ? d.t1 : Date.now(); }
+  function etatPeriode(z) {
+    const t = refVol(), quand = t > Date.now() + 3600000 ? "le jour du vol" : "";
+    if (z.fin) {
+      const f = new Date(z.fin + "T23:59:59").getTime();
+      if (f < t) return { cle: "expiree", txt: `⚠ SUP terminé le ${jourZ(z.fin)} : zone non affichée${quand ? " " + quand : ""}` };
+      const j0 = new Date(t); j0.setHours(0, 0, 0, 0);
+      const j = Math.round((new Date(z.fin + "T00:00:00") - j0) / 86400000);
+      if (j <= 7) return { cle: "bientot", txt: `⏳ fin le ${jourZ(z.fin)} (${j === 0 ? "dernier jour" : j === 1 ? "demain" : "dans " + j + " j"})` };
+    }
+    if (z.debut && new Date(z.debut + "T00:00:00").getTime() > t) return { cle: "future", txt: `🕐 à partir du ${jourZ(z.debut)} : zone non affichée${quand ? " " + quand : ""}` };
+    return { cle: "ok", txt: z.fin ? `jusqu'au ${jourZ(z.fin)}` : z.debut ? `depuis le ${jourZ(z.debut)}` : "" };
+  }
+  const horsPeriode = (z) => { const c = etatPeriode(z).cle; return c === "expiree" || c === "future"; };
+  const zoneAffichee = (z) => z.visible !== false && !horsPeriode(z);
 
   const sansAcc = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
   const RE_DMS = /(\d{1,2})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([NS])\s*[,;/\-]?\s*(\d{1,3})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([EW])/g;
@@ -351,11 +368,11 @@
     return geoCache[k];
   }
   function popupZone(z) {
-    return `<div class="ofm-pop"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? `<br><small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<div class="ofm-e">${esc(z.note)}</div>` : ""}<small class="ofm-approx">Zone ajoutée par vous (Mes zones).</small></div>`;
+    return `<div class="ofm-pop"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? `<br><small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<div class="ofm-e">${esc(z.note)}</div>` : ""}${z.ref || z.fin ? `<small>${esc(z.ref || "")}${z.ref && z.fin ? " · " : ""}${z.fin ? "jusqu'au " + jourZ(z.fin) : ""}</small><br>` : ""}<small class="ofm-approx">Zone ajoutée par vous (Mes zones).</small></div>`;
   }
   /* Dessin sur la carte OFM */
   function zonesOFM() {
-    const liste = zones.filter((z) => z.visible !== false);
+    const liste = zones.filter(zoneAffichee);
     const enCours = zoneEditee ? lireFormZone() : null;
     liste.forEach((z) => {
       if (enCours && z.id === zoneEditee) return;
@@ -374,7 +391,7 @@
   /* Dessin sur les captures calées (SVG à l'écran et image partagée) */
   function zonesPx() {
     if (!cal) return [];
-    return zones.filter((z) => z.visible !== false).map((z) => {
+    return zones.filter(zoneAffichee).map((z) => {
       const g = geoZone(z);
       return g.pts.length >= 3 ? { z, p: g.pts.map((q) => proj(q.lat, q.lon)) } : null;
     }).filter(Boolean);
@@ -407,19 +424,22 @@
   /* Panneau « Mes zones » */
   function lireFormZone() {
     const f = (id) => { const e = document.getElementById(id); return e ? e.value : ""; };
-    return { nom: f("zNom").trim(), bas: f("zBas").trim(), haut: f("zHaut").trim(), note: f("zNote").trim(), texte: f("zTexte"), couleur: f("zCouleur") || COULEURS_ZONE[0] };
+    return { nom: f("zNom").trim(), bas: f("zBas").trim(), haut: f("zHaut").trim(), note: f("zNote").trim(), ref: f("zRef").trim(), debut: f("zDebut"), fin: f("zFin"), texte: f("zTexte"), couleur: f("zCouleur") || COULEURS_ZONE[0] };
   }
   function afficherZones() {
     const p = document.getElementById("zonesPanneau");
     if (!p) return;
-    document.getElementById("zonesNb").textContent = zones.length ? `(${zones.length})` : "";
+    const nbExp = zones.filter((z) => etatPeriode(z).cle === "expiree").length;
+    document.getElementById("zonesNb").innerHTML = (zones.length ? `(${zones.length})` : "") + (nbExp ? ` <span class="zone-alerte">⚠ ${nbExp} SUP terminé${nbExp > 1 ? "s" : ""}</span>` : "");
     if (zoneEditee) {
-      const z = zoneEditee === "nouvelle" ? { nom: "", bas: "", haut: "", note: "", texte: "", couleur: COULEURS_ZONE[zones.length % COULEURS_ZONE.length] } : zones.find((x) => x.id === zoneEditee);
+      const z = zoneEditee === "nouvelle" ? { nom: "", bas: "", haut: "", note: "", ref: "", debut: "", fin: "", texte: "", couleur: COULEURS_ZONE[zones.length % COULEURS_ZONE.length] } : zones.find((x) => x.id === zoneEditee);
       const g = geometrieZone(z.texte);
       p.innerHTML = `<div class="zone-form">
         <label>Nom <input id="zNom" value="${esc(z.nom)}" placeholder="ex. : ZRT NOM"></label>
         <div class="zone-lim"><label>Plancher <input id="zBas" value="${esc(z.bas)}" placeholder="ex. : SFC"></label><label>Plafond <input id="zHaut" value="${esc(z.haut)}" placeholder="ex. : 3500 ft AMSL"></label></div>
         <label>Remarque <input id="zNote" value="${esc(z.note)}" placeholder="ex. : horaires, fréquence…"></label>
+        <label>Référence <input id="zRef" value="${esc(z.ref || "")}" placeholder="ex. : SUP AIP 123/26"></label>
+        <div class="zone-lim"><label>Début du SUP <input id="zDebut" type="date" value="${esc(z.debut || "")}"></label><label>Fin du SUP <input id="zFin" type="date" value="${esc(z.fin || "")}"></label></div>
         <label>Limites latérales <small>(collez le texte du SUP AIP : coordonnées, arcs, cercles — ou touchez « ✏️ Dessiner »)</small>
           <textarea id="zTexte" rows="6" spellcheck="false" placeholder="48°39'44&quot;N, 005°54'58&quot;E&#10;48°45'00&quot;N, 005°57'32&quot;E&#10;Clockwise arc of 10 NM radius centered on 48°34'59&quot;N, 005°57'16&quot;E&#10;48°43'07&quot;N, 006°06'07&quot;E …">${esc(z.texte)}</textarea></label>
         <div class="zone-etat ${g.erreur ? "warn" : ""}">${g.erreur ? "⚠ " + esc(g.erreur) : `✓ ${coordsZone(sansAcc(z.texte)).length} coordonnées lues · forme de ${g.pts.length} points`}</div>
@@ -453,9 +473,9 @@
       $("#zAnnuler").addEventListener("click", () => { zoneEditee = null; dessinZone = false; afficherZones(); rafraichir(); });
       return;
     }
-    p.innerHTML = (zones.length ? zones.map((z) => `<div class="zone-ligne${z.visible === false ? " cachee" : ""}" data-id="${z.id}">
+    p.innerHTML = (zones.length ? zones.map((z) => `<div class="zone-ligne${z.visible === false || horsPeriode(z) ? " cachee" : ""}" data-id="${z.id}">
         <span class="pastille" style="background:${z.couleur}"></span>
-        <div class="zone-txt"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? ` <small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<br><small>${esc(z.note)}</small>` : ""}</div>
+        <div class="zone-txt"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? ` <small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<br><small>${esc(z.note)}</small>` : ""}${(() => { const e = etatPeriode(z); return e.txt || z.ref ? `<br><small class="zone-periode ${e.cle}">${z.ref ? esc(z.ref) + (e.txt ? " · " : "") : ""}${esc(e.txt)}</small>` : ""; })()}</div>
         <button data-act="voir" title="Centrer">🎯</button>
         <button data-act="masquer" title="Afficher / masquer">${z.visible === false ? "🚫" : "👁"}</button>
         <button data-act="modifier" title="Modifier">✎</button>
@@ -466,14 +486,14 @@
     p.querySelectorAll(".zone-ligne button").forEach((b) => b.addEventListener("click", () => {
       const id = b.closest(".zone-ligne").dataset.id, z = zones.find((x) => x.id === id);
       const act = b.dataset.act;
-      if (act === "voir") { if (z.visible === false) { z.visible = true; sauverZones(); } afficherZones(); voirZone(z); const m = document.getElementById(mode === "ofm" ? "ofmMap" : "cZone"); if (m) m.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      if (act === "voir") { if (horsPeriode(z)) toast("Zone hors de sa période (SUP AIP) : elle n'est pas dessinée. Modifiez ses dates si besoin.", 4500); if (z.visible === false) { z.visible = true; sauverZones(); } afficherZones(); voirZone(z); const m = document.getElementById(mode === "ofm" ? "ofmMap" : "cZone"); if (m) m.scrollIntoView({ behavior: "smooth", block: "center" }); }
       if (act === "masquer") { z.visible = z.visible === false; sauverZones(); afficherZones(); rafraichir(); }
       if (act === "modifier") { zoneEditee = id; afficherZones(); rafraichir(); }
       if (act === "suppr" && confirm(`Supprimer la zone « ${z.nom || "Zone"} » ?`)) { zones = zones.filter((x) => x.id !== id); sauverZones(); afficherZones(); rafraichir(); }
     }));
   }
   function remplirForm(v) {
-    ["zNom", "zBas", "zHaut", "zNote", "zTexte", "zCouleur"].forEach((id) => { const e = document.getElementById(id); if (e) e.value = v[{ zNom: "nom", zBas: "bas", zHaut: "haut", zNote: "note", zTexte: "texte", zCouleur: "couleur" }[id]]; });
+    ["zNom", "zBas", "zHaut", "zNote", "zRef", "zDebut", "zFin", "zTexte", "zCouleur"].forEach((id) => { const e = document.getElementById(id); if (e) e.value = v[{ zNom: "nom", zBas: "bas", zHaut: "haut", zNote: "note", zRef: "ref", zDebut: "debut", zFin: "fin", zTexte: "texte", zCouleur: "couleur" }[id]] || ""; });
     const t = document.getElementById("zTexte"); if (t) t.dispatchEvent(new Event("input"));
     document.querySelectorAll("#zonesPanneau .pastille").forEach((x) => x.classList.toggle("on", x.dataset.couleur === v.couleur));
   }
@@ -679,6 +699,7 @@
   /* ---------- Rafraîchissement général ---------- */
   function rafraichir() {
     construire();
+    if (!zoneEditee) afficherZones();
     if (mode === "ofm") {
       if (!document.getElementById("tab-carte").classList.contains("actif")) return; // carte dessinée à l'ouverture de l'onglet
       dessinerOFM(); afficherListe(); infoOFM(); if (ofm) bandeauCreneau(ofm.getContainer()); return;

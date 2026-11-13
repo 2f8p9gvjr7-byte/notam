@@ -308,6 +308,10 @@ h1 { white-space: nowrap; }
 .zones-bloc[open] summary { border-bottom: 1px solid var(--bord); margin-bottom: 8px; }
 .zone-ligne { display: flex; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--bord); }
 .zone-ligne.cachee { opacity: .5; }
+.zone-periode.bientot { color: var(--orange) !important; font-weight: 700; }
+.zone-periode.expiree { color: #ff6b6b !important; font-weight: 700; }
+.zone-alerte { color: #ff6b6b; font-size: 13px; font-weight: 700; }
+.zone-form input[type="date"] { min-height: 38px; }
 .zone-ligne .zone-txt { flex: 1; min-width: 0; font-size: 14px; }
 .zone-ligne .zone-txt small { color: var(--doux); }
 .zone-ligne button { background: transparent; border: 1px solid var(--bord); color: var(--texte); border-radius: 8px; padding: 5px 7px; font-size: 15px; }
