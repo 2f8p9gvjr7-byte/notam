@@ -949,22 +949,36 @@ function decouperBriefing(texte) {
 function lireEntetePIB(texte) {
   const T = majSansAccent(texte);
   const res = {};
-  // Le menu de SOFIA peut s'intercaler entre l'intitulé et la valeur : on tolère du texte sans chiffres entre les deux.
-  const dep = T.match(/DATE ET HEURE DE DEPART\s*\(UTC\)[^\d]{0,120}?(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
-  if (dep) res.depart = Date.UTC(+dep[3], +dep[2] - 1, +dep[1], +dep[4], +dep[5]);
-  const prod = T.match(/DATE ET HEURE DE PRODUCTION\s*\(UTC\)[^\d]{0,120}?(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
-  if (prod) res.production = Date.UTC(+prod[3], +prod[2] - 1, +prod[1], +prod[4], +prod[5]);
-  const dur = T.match(/\bDUREE\b[^\d]{0,120}?(\d{1,2}):?(\d{2})\b/);
+  // L'en-tête SOFIA est sur deux colonnes : selon la copie, on obtient « libellé valeur libellé valeur »
+  // ou « libellé libellé valeur valeur ». Dans les deux cas, les valeurs viennent dans l'ordre des libellés.
+  function paire(reA, reB, reVal, fenetre) {
+    const a = reA.exec(T), b = reB.exec(T);
+    if (!a && !b) return [null, null];
+    const debut = Math.min(a ? a.index + a[0].length : Infinity, b ? b.index + b[0].length : Infinity);
+    const zone = T.slice(debut, debut + (fenetre || 260));
+    const g = new RegExp(reVal.source, "g");
+    const vals = [];
+    let m;
+    while ((m = g.exec(zone)) && vals.length < 2) vals.push(m);
+    if (a && b) return a.index < b.index ? [vals[0] || null, vals[1] || null] : [vals[1] || null, vals[0] || null];
+    return a ? [vals[0] || null, null] : [null, vals[0] || null];
+  }
+  const DATE = /(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/;
+  const enUTC = (m) => (m ? Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]) : null);
+  const [prod, dep] = paire(/DATE ET HEURE DE PRODUCTION\s*\(UTC\)/, /DATE ET HEURE DE DEPART\s*\(UTC\)/, DATE, 320);
+  if (dep) res.depart = enUTC(dep);
+  if (prod) res.production = enUTC(prod);
+  const [dur] = paire(/\bDUREE\b/, /REGLE DE VOL/, /\b(\d{1,2}):?(\d{2})\b/);
   if (dur) res.dureeMin = +dur[1] * 60 + +dur[2];
-  const plaf = T.match(/PLAFOND\s*\(EN FL\)[^\d]{0,120}?(\d{1,3})\b/);
-  if (plaf) res.plafondFt = +plaf[1] * 100;
-  const OACI = "((?:LF|LS|ED|EB|EL|EG|LE|LI)[A-Z]{2})";
-  const dpt = T.match(new RegExp("\\bDEPART\\b(?!\\s*\\(|\\s*:)[^\\d]{0,120}?\\b" + OACI + "\\b"));
-  const dst = T.match(new RegExp("\\bDESTINATION\\b[^\\d]{0,120}?\\b" + OACI + "\\b"));
+  const [, plaf] = paire(/PLANCHER\s*\(EN FL\)/, /PLAFOND\s*\(EN FL\)/, /\b(\d{1,3})\b/);
+  if (plaf && +plaf[1] > 0) res.plafondFt = +plaf[1] * 100;
+  const OACI = /\b((?:LF|LS|ED|EB|EL|EG|LE|LI)[A-Z]{2})\b/;
+  const [dpt, dst] = paire(/\bDEPART\b(?!\s*[(:])/, /\bDESTINATION\b(?!\s*:)/, OACI);
   if (dpt) res.de = dpt[1];
   if (dst) res.vers = dst[1];
-  const larg = T.match(/\b(?:LARGEUR|COULOIR)\b[^\d]{0,60}?(\d{1,2}(?:[.,]\d)?)\s*(?:NM)?\b/);
-  if (larg) res.couloirNm = parseFloat(larg[1].replace(",", "."));
+  const [ray, demi] = paire(/RAYON\s*\(EN NM\)/, /DEMI-?\s?COULOIR\s*\(EN NM\)/, /\b(\d{1,3}(?:[.,]\d)?)\b/);
+  if (demi) { res.couloirNm = parseFloat(demi[1].replace(",", ".")); res.couloirCote = true; }   // SOFIA donne le demi-couloir
+  if (ray) res.rayonNm = parseFloat(ray[1].replace(",", "."));
   return res.depart ? res : null;
 }
 

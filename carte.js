@@ -1114,10 +1114,11 @@
   let couloirNm = 10, couloirCote = false, couloirOn = true;
   try {
     couloirNm = +(localStorage.getItem("cCouloirNm") || 10);
-    couloirCote = localStorage.getItem("cCouloirCote") === "1";
+    couloirCote = localStorage.getItem("cCouloirCote") !== "0";   // SOFIA demande un demi-couloir : de chaque côté par défaut
     couloirOn = localStorage.getItem("cCouloirOff") !== "1";
   } catch (e) {}
   const demiCouloir = () => (couloirCote ? couloirNm : couloirNm / 2);
+  const rayonTerrains = () => { const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null; return en && en.rayonNm > 0 ? en.rayonNm : 0; };
   function sigBriefing() {
     const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null;
     return en && (en.de || en.vers) ? [en.de, en.vers, en.production || en.depart].join("|") : "";
@@ -1130,7 +1131,10 @@
     if ((!ref || ref.sig !== sig) && pts.length > 1) {   // nouveau briefing : le couloir suit la route du moment
       ref = { sig, pts: pts.map((p) => [p.lat, p.lon]) };
       const en = dernierTri.entete;
-      if (en && en.couloirNm > 0) { couloirNm = en.couloirNm; try { localStorage.setItem("cCouloirNm", String(couloirNm)); } catch (e) {} }
+      if (en && en.couloirNm > 0) {
+        couloirNm = en.couloirNm; couloirCote = !!en.couloirCote;
+        try { localStorage.setItem("cCouloirNm", String(couloirNm)); localStorage.setItem("cCouloirCote", couloirCote ? "1" : "0"); } catch (e) {}
+      }
       try { localStorage.setItem("cCouloirRef", JSON.stringify(ref)); } catch (e) {}
     }
     return ref && ref.sig === sig ? ref : null;
@@ -1183,10 +1187,17 @@
     return poly.map(([x, y]) => P.ll(x, y));
   }
   // Parties de la route actuelle hors du couloir
-  function horsCouloir(pts, ref, r) {
+  function horsCouloir(pts, ref, r, rAd) {
     const P = projNm(ref[0][0]);
     const R = ref.map(([la, lo]) => P.xy(la, lo));
-    const dmin = (q) => { let m = Infinity; for (let i = 0; i < R.length - 1; i++) m = Math.min(m, distSeg(q, R[i], R[i + 1])); return m; };
+    const ads = rAd > r ? [R[0], R[R.length - 1]] : [];
+    const dmin = (q) => {
+      let m = Infinity;
+      for (let i = 0; i < R.length - 1; i++) m = Math.min(m, distSeg(q, R[i], R[i + 1]));
+      // autour des terrains, la zone briefée va jusqu'au rayon SOFIA : on ramène l'écart à l'échelle du couloir
+      ads.forEach((c) => { m = Math.min(m, Math.hypot(q[0] - c[0], q[1] - c[1]) - (rAd - r)); });
+      return m;
+    };
     const morceaux = []; let cur = null, horsNm = 0, maxEcart = 0;
     for (let i = 0; i < pts.length - 1; i++) {
       const a = P.xy(pts[i].lat, pts[i].lon), b = P.xy(pts[i + 1].lat, pts[i + 1].lon);
@@ -1270,11 +1281,12 @@
     let ligneCouloir = "";
     const ref = !circuit && couloirOn && pts.length > 1 ? refCouloir(pts) : null;
     if (ref && ref.pts.length > 1) {
-      const r = demiCouloir();
+      const r = demiCouloir(), rAd = rayonTerrains();
+      if (rAd > r) [ref.pts[0], ref.pts[ref.pts.length - 1]].forEach((c) => L.circle(c, { radius: rAd * 1852, color: "#1e88e5", weight: 2, dashArray: "6 6", fill: true, fillColor: "#1e88e5", fillOpacity: 0.05, interactive: false }).addTo(ofmCouche));
       L.polygon(contourCouloir(ref.pts, r), { color: "#1e88e5", weight: 2, dashArray: "6 6", fill: true, fillColor: "#1e88e5", fillOpacity: 0.07, interactive: false }).addTo(ofmCouche);
-      const h = horsCouloir(pts, ref.pts, r);
+      const h = horsCouloir(pts, ref.pts, r, rAd);
       h.morceaux.forEach((m) => L.polyline(m, { color: "#ff6d00", weight: 7, opacity: 0.95, interactive: false }).addTo(ofmCouche));
-      const lib = `Couloir SOFIA ${couloirNm} NM ${couloirCote ? "de chaque côté" : "au total"}`;
+      const lib = `Couloir SOFIA ${couloirNm} NM ${couloirCote ? "de chaque côté" : "au total"}${rAd > r ? ` + ${rAd} NM autour des terrains` : ""}`;
       ligneCouloir = h.morceaux.length
         ? `<div class="couloir-alerte">⚠ <b>Route hors du couloir</b> sur ${Math.max(1, Math.round(h.horsNm))} NM (jusqu'à ${h.maxEcart.toFixed(1).replace(".", ",")} NM au-delà, en orange). Les NOTAM de ce secteur ne sont peut-être pas dans votre briefing : refaites-le dans SOFIA avec ces points, puis <a href="#" id="couloirRecaler">recalez le couloir</a>.</div>`
         : `<div class="couloir-ok">${lib} : route entièrement dedans ✓</div>`;
@@ -1483,7 +1495,7 @@
       <div class="ligne-resume">${ICO("notam", "i-notam")}<span class="zs-t">NOTAM<small>du briefing SOFIA</small></span><span class="pastille-nb">${places}/${items.length}</span>${sw("notam", !masquerNotam)}</div>
       <div class="ligne-resume">${ICO("zone", "i-zone")}<span class="zs-t">Mes zones<small>ZRT saisies depuis les SUP AIP</small></span><span class="pastille-nb">${zVis}/${zones.length}</span>${sw("zones", !masquerZones)}</div>
       <div class="ligne-resume">${ICO("cercle", "i-cercle")}<span class="zs-t">Cercles indicatifs<small>centre et rayon de la ligne Q</small></span>${sw("cercles", !masquerCercles)}</div>
-      <div class="ligne-resume couloir-ligne">${ICO("route", "i-route")}<span class="zs-t">Couloir SOFIA<small>largeur demandée dans SOFIA</small></span>${sw("couloir", couloirOn)}</div>
+      <div class="ligne-resume couloir-ligne">${ICO("route", "i-route")}<span class="zs-t">Couloir SOFIA<small>demi-couloir demandé dans SOFIA</small></span>${sw("couloir", couloirOn)}</div>
       <div class="couloir-reglage"${couloirOn ? "" : " hidden"}>
         <select id="couloirNm">${[2, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50].map((v) => `<option value="${v}"${v === couloirNm ? " selected" : ""}>${v} NM</option>`).join("")}</select>
         <div class="seg seg-mini"><button data-cote="0" class="${couloirCote ? "" : "on"}">au total</button><button data-cote="1" class="${couloirCote ? "on" : ""}">de chaque côté</button></div>
