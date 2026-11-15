@@ -380,3 +380,75 @@ label.lien { color: #5aaeea; text-decoration: underline; cursor: pointer; }
 .rtba-ligne { color: #ff8a80; background: rgba(229,57,53,.12); border: 1px solid rgba(229,57,53,.5); border-radius: 10px; padding: 7px 10px; margin: 6px 0 8px; font-size: 14px; line-height: 1.4; }
 .rtba-ligne small { color: var(--doux); }
 #rtbaCarte[hidden] { display: none; }
+
+/* ===== 4.9.13 — présentation façon « instrument » ===== */
+.ico { width: 18px; height: 18px; flex: none; vertical-align: -3px; }
+.ancien { display: none !important; }
+.lien-haut { display: inline-flex; align-items: center; gap: 5px; border-color: var(--bord); color: var(--texte); background: var(--carte); padding: 6px 10px; font-size: 13px; font-weight: 600; }
+.lien-haut .ico { width: 16px; height: 16px; }
+.aide-btn { padding: 6px 7px; }
+.onglets button { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.onglets button .ico { width: 17px; height: 17px; }
+/* barre de route */
+.route-barre { display: flex; align-items: center; gap: 10px; background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 8px 8px 8px 12px; margin: 0 0 10px; }
+.route-barre > .ico { color: var(--orange); width: 20px; height: 20px; }
+.route-barre .route-info { flex: 1; margin: 0; font-size: 14px; font-weight: 700; min-width: 0; }
+.route-barre .route-info small { display: block; font-weight: 400; font-size: 11.5px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.route-barre .route-info:empty::before { content: "Aucune route · touchez le crayon"; color: var(--doux); font-weight: 400; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+#routeCrayon { background: transparent; border: 1px solid var(--bord); color: var(--doux); border-radius: 9px; width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; padding: 0; }
+#ofmBloc.plein .route-barre { display: none; }
+/* boutons de carte sombres */
+.leaflet-bar.ofm-boutons, .leaflet-touch .leaflet-bar.ofm-boutons { border: 0; box-shadow: none; display: flex; flex-direction: column; gap: 8px; background: transparent; }
+.ofm-boutons a, .leaflet-touch .ofm-boutons a { width: 42px !important; height: 42px !important; border-radius: 12px !important; background: rgba(13,21,38,.88) !important; border: 1px solid rgba(255,255,255,.14) !important; color: #fff !important; display: flex !important; align-items: center; justify-content: center; position: relative; }
+.ofm-boutons a[hidden] { display: none !important; }
+.ofm-boutons a .ico { width: 21px; height: 21px; }
+.ofm-boutons a.ofm-couches { background: #2f6fd6 !important; border-color: #2f6fd6 !important; }
+.ofm-boutons a.on { background: #d81b60 !important; border-color: #d81b60 !important; }
+.bdg-couches { position: absolute; top: -6px; right: -6px; background: var(--rouge); color: #fff; font: 700 11px -apple-system, sans-serif; border-radius: 9px; padding: 1px 5px; line-height: 1.3; }
+.leaflet-touch .leaflet-control-zoom a { background: rgba(13,21,38,.88); color: #fff; border-color: rgba(255,255,255,.14); }
+.leaflet-touch .leaflet-control-zoom { border: 1px solid rgba(255,255,255,.14); border-radius: 12px; overflow: hidden; }
+.carte-creneau { background: rgba(13,21,38,.88) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 16px !important; }
+/* lignes de résumé (NOTAM, Mes zones, panneau) */
+.ligne-resume, .zones-bloc summary { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 11px 12px; margin: 8px 0 0; color: var(--texte); font: inherit; }
+.ligne-resume > .ico, .zones-bloc summary > .ico { width: 22px; height: 22px; }
+.zs-t { flex: 1; min-width: 0; font-weight: 600; font-size: 15.5px; line-height: 1.25; }
+.zs-t small { display: block; font-weight: 400; font-size: 12px; color: var(--doux); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.i-notam { color: #c77dff; } .i-zone { color: #b05ce0; } .i-cercle { color: var(--bleu); } .i-route { color: var(--bleu); }
+.pastille-nb { font-weight: 700; font-size: 12.5px; border-radius: 10px; padding: 3px 9px; background: #22396a; color: #9cc4ff; white-space: nowrap; }
+.pastille-nb.alerte { background: rgba(248,113,113,.16); color: #ff8a8a; }
+.ligne-resume .chev, .zones-bloc summary .chev { width: 16px; height: 16px; color: #6f84b3; transition: transform .2s; }
+.lien-petit { color: var(--bleu); font-size: 13px; font-weight: 600; text-decoration: none; }
+#cInfo .note { margin: 8px 0 0; }
+/* Mes zones */
+.zones-bloc { background: transparent; border: 0; padding: 0; margin: 0 0 10px; }
+.zones-bloc summary { list-style: none; cursor: pointer; }
+.zones-bloc summary::-webkit-details-marker { display: none; }
+.zones-bloc[open] summary { margin-bottom: 0; border-bottom: 1px solid var(--bord); border-radius: 12px 12px 0 0; }
+.zones-bloc[open] summary .chev { transform: rotate(90deg); }
+.zones-bloc #zonesPanneau { background: var(--carte); border: 1px solid var(--bord); border-top: 0; border-radius: 0 0 12px 12px; padding: 4px 12px 0; }
+.zone-ligne button { display: flex; align-items: center; justify-content: center; width: 34px; height: 32px; padding: 0; }
+.zone-ligne button .ico { width: 17px; height: 17px; }
+/* bouton Couches en mode capture */
+.c-couches { display: inline-flex; align-items: center; gap: 6px; background: #2f6fd6 !important; border-color: #2f6fd6 !important; color: #fff !important; }
+/* panneau du bas */
+.feuille { position: fixed; inset: 0; z-index: 3000; }
+.feuille[hidden] { display: none; }
+.feuille-voile { position: absolute; inset: 0; background: rgba(0,0,0,.4); }
+.feuille-corps { position: absolute; left: 0; right: 0; bottom: 0; max-width: 640px; margin: 0 auto; max-height: 85vh; overflow-y: auto; background: #0f1a30; border-top: 1px solid var(--bord); border-radius: 20px 20px 0 0; padding: 8px 14px calc(env(safe-area-inset-bottom) + 18px); animation: monte .2s ease-out; }
+@keyframes monte { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+.poignee { width: 38px; height: 5px; border-radius: 3px; background: #3a4f7d; margin: 0 auto 6px; }
+.feuille-titre { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 12.5px; color: var(--doux); text-transform: uppercase; letter-spacing: 1px; margin: 12px 4px 0; }
+#couchesFermer { background: transparent; border: 0; color: var(--doux); padding: 4px; display: flex; }
+.seg { display: flex; background: var(--carte); border: 1px solid var(--bord); border-radius: 11px; padding: 3px; margin-top: 8px; }
+.seg button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; background: transparent; color: var(--doux); padding: 9px 0; border-radius: 9px; font-size: 14px; font-weight: 600; }
+.seg button.on { background: var(--bleu); color: #0d1526; }
+.inter { width: 46px; height: 28px; flex: none; border-radius: 14px; border: 0; background: #3a4f7d; position: relative; padding: 0; }
+.inter::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s; }
+.inter.on { background: #34c759; } .inter.on::after { left: 21px; }
+body.feuille-ouverte { overflow: hidden; }
+
+h1 { font-size: 17px; letter-spacing: 1px; white-space: nowrap; }
+.entete-droite { gap: 6px; }
+.lien-haut { padding: 5px 8px; font-size: 12.5px; }
+.note-ofm { font-size: 12px; margin: 6px 2px 0; }
+@media (max-width: 380px) { .lien-haut .ico { display: none; } }

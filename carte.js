@@ -287,7 +287,10 @@
     return { cle: "ok", txt: z.fin ? `jusqu'au ${jourZ(z.fin)}` : z.debut ? `depuis le ${jourZ(z.debut)}` : "" };
   }
   const horsPeriode = (z) => { const c = etatPeriode(z).cle; return c === "expiree" || c === "future"; };
-  const zoneAffichee = (z) => z.visible !== false && !horsPeriode(z);
+  let masquerZones = false, masquerNotam = false;
+  try { masquerZones = localStorage.getItem("cSansZones") === "1"; masquerNotam = localStorage.getItem("cSansNotam") === "1"; } catch (e) {}
+  const zoneAffichee = (z) => !masquerZones && z.visible !== false && !horsPeriode(z);
+  const ICO = (i, c) => `<svg class="ico${c ? " " + c : ""}"><use href="#i-${i}"/></svg>`;
 
   const sansAcc = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase();
   const RE_DMS = /(\d{1,2})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([NS])\s*[,;/\-]?\s*(\d{1,3})\s*°\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:"|''|”|″|’’)?\s*([EW])/g;
@@ -430,7 +433,9 @@
     const p = document.getElementById("zonesPanneau");
     if (!p) return;
     const nbExp = zones.filter((z) => etatPeriode(z).cle === "expiree").length;
-    document.getElementById("zonesNb").innerHTML = (zones.length ? `(${zones.length})` : "") + (nbExp ? ` <span class="zone-alerte">⚠ ${nbExp} SUP terminé${nbExp > 1 ? "s" : ""}</span>` : "");
+    document.getElementById("zonesNb").innerHTML = nbExp ? `<span class="pastille-nb alerte">⚠ ${nbExp} SUP terminé${nbExp > 1 ? "s" : ""}</span>` : zones.length ? `<span class="pastille-nb">${zones.filter((z) => z.visible !== false && !horsPeriode(z)).length}/${zones.length}</span>` : "";
+    const zn = document.getElementById("zonesNoms");
+    if (zn) zn.textContent = masquerZones ? "masquées sur la carte" : zones.length ? zones.map((z) => z.nom || "Zone").join(", ") : "ZRT saisies depuis les SUP AIP";
     if (zoneEditee) {
       const z = zoneEditee === "nouvelle" ? { nom: "", bas: "", haut: "", note: "", ref: "", debut: "", fin: "", texte: "", couleur: COULEURS_ZONE[zones.length % COULEURS_ZONE.length] } : zones.find((x) => x.id === zoneEditee);
       const g = geometrieZone(z.texte);
@@ -476,10 +481,10 @@
     p.innerHTML = (zones.length ? zones.map((z) => `<div class="zone-ligne${z.visible === false || horsPeriode(z) ? " cachee" : ""}" data-id="${z.id}">
         <span class="pastille" style="background:${z.couleur}"></span>
         <div class="zone-txt"><b>${esc(z.nom || "Zone")}</b>${z.bas || z.haut ? ` <small>${esc(z.bas || "?")} → ${esc(z.haut || "?")}</small>` : ""}${z.note ? `<br><small>${esc(z.note)}</small>` : ""}${(() => { const e = etatPeriode(z); return e.txt || z.ref ? `<br><small class="zone-periode ${e.cle}">${z.ref ? esc(z.ref) + (e.txt ? " · " : "") : ""}${esc(e.txt)}</small>` : ""; })()}</div>
-        <button data-act="voir" title="Centrer">🎯</button>
-        <button data-act="masquer" title="Afficher / masquer">${z.visible === false ? "🚫" : "👁"}</button>
-        <button data-act="modifier" title="Modifier">✎</button>
-        <button data-act="suppr" title="Supprimer">🗑</button>
+        <button data-act="voir" title="Centrer">${ICO("cible")}</button>
+        <button data-act="masquer" title="Afficher / masquer">${ICO(z.visible === false ? "oeil-non" : "oeil")}</button>
+        <button data-act="modifier" title="Modifier">${ICO("crayon")}</button>
+        <button data-act="suppr" title="Supprimer">${ICO("poubelle")}</button>
       </div>`).join("") : `<p class="note">Aucune zone. Ajoutez par exemple une ZRT d'un SUP AIP : elle s'affichera sur la carte OFM et sur vos captures calées.</p>`)
       + `<button id="zAjouter" class="zone-ajouter">＋ Ajouter une zone</button>`;
     $("#zAjouter").addEventListener("click", () => { zoneEditee = "nouvelle"; afficherZones(); });
@@ -575,7 +580,7 @@
     // NOTAM
     items.forEach((it) => { it.px = enPixels(it); });
     placerEtiquettes();
-    items.forEach((it) => {
+    (masquerNotam ? [] : items).forEach((it) => {
       const px = it.px;
       if (!px || !px.dedans) return;
       const g = el("g", { "data-num": it.num, style: "cursor:pointer" }, svg);
@@ -712,7 +717,7 @@
     afficherListe();
     const info = $("#cInfo");
     if (!items.length) info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Briefing</b>.</p>`;
-    else info.innerHTML = `<p class="note">${items.length} NOTAM cochés dans le tri${cal ? " · " + items.filter((i) => i.px && i.px.dedans).length + " placés sur cette capture" : ""}.${cal && routeCapture() ? " Route de la carte numérique tracée en noir." : ""}</p>`;
+    else { const n = cal ? items.filter((i) => i.px && i.px.dedans).length : 0; info.innerHTML = ligneNotam(`${items.length} cochés${cal ? " · " + n + " sur cette capture" : ""}${cal && routeCapture() ? " · route en noir" : ""}`, cal ? `${n}/${items.length}` : `${items.length}`, false); }
     $("#cRecaler").hidden = !image;
     $("#cPartager").hidden = !(image && cal);
     $("#cCercles").hidden = !(image && cal);
@@ -844,7 +849,7 @@
     zonesCanvas(ctx, T);
     const txtRoute = routeCanvas(ctx, T);
     // repères
-    items.forEach((it) => {
+    (masquerNotam ? [] : items).forEach((it) => {
       const px = it.px;
       if (!px || !px.dedans) return;
       ctx.strokeStyle = it.couleur; ctx.fillStyle = it.couleur; ctx.lineWidth = T.trait;
@@ -969,7 +974,7 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmPlein" title="Plein écran">⛶</a><a href="#" id="ofmCercles" title="Cercles indicatifs">◯</a><a href="#" id="ofmEditer" title="Modifier la route">✎</a>`;
+        div.innerHTML = `<a href="#" id="ofmCouches" class="ofm-couches" title="Couches">${ICO("couches")}<span class="bdg-couches" hidden></span></a><a href="#" id="ofmPlein" title="Plein écran">${ICO("plein")}</a><a href="#" id="ofmCercles" title="Cercles indicatifs" hidden>◯</a><a href="#" id="ofmEditer" title="Dessiner la route sur la carte">${ICO("crayon")}</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
@@ -977,6 +982,8 @@
     ofm.addControl(new Boutons());
     appliquerFond();
     $("#ofmPlein").addEventListener("click", (e) => { e.preventDefault(); basculerPlein(); });
+    $("#ofmCouches").addEventListener("click", (e) => { e.preventDefault(); ouvrirCouches(); });
+    majBadgeCouches();
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
     ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
     $("#ofmCercles").addEventListener("click", (e) => {
@@ -993,7 +1000,7 @@
     const c = $("#ofmCercles");
     if (c) c.classList.toggle("off", masquerCercles);
     const p = $("#ofmPlein");
-    if (p) p.textContent = $("#ofmBloc").classList.contains("plein") ? "✕" : "⛶";
+    if (p) p.innerHTML = ICO($("#ofmBloc").classList.contains("plein") ? "fermer" : "plein");
   }
   function basculerPlein() {
     const b = $("#ofmBloc");
@@ -1188,7 +1195,7 @@
     zonesOFM();
     dessinerRoute(bornes);
     const groupes = {};
-    items.forEach((it) => {
+    (masquerNotam ? [] : items).forEach((it) => {
       const f = it.forme;
       if (!f) return;
       const c = it.couleur;
@@ -1233,7 +1240,7 @@
     const info = $("#cInfo");
     if (!items.length) { info.innerHTML = `<p class="note">Aucun NOTAM coché pour l'instant : collez d'abord votre briefing dans l'onglet <b>Briefing</b>.</p>`; return; }
     const places = items.filter((i) => i.forme).length;
-    info.innerHTML = `<p class="note">${items.length} NOTAM cochés · ${places} placés sur la carte. <a href="#" id="ofmCadrer">Recadrer sur les NOTAM</a></p>`;
+    info.innerHTML = ligneNotam(`${items.length} cochés · ${places} placés sur la carte`, `${places}/${items.length}`, true);
     const a = $("#ofmCadrer");
     if (a) a.addEventListener("click", (e) => { e.preventDefault(); dejaCadre = false; dessinerOFM(); });
   }
@@ -1331,6 +1338,76 @@
     go();
   });
   majBoutonKmz();
+  function ligneNotam(sousTitre, nb, cadrer) {
+    return `<div class="ligne-resume">${ICO("notam", "i-notam")}<span class="zs-t">NOTAM<small>${masquerNotam ? "masqués sur la carte" : esc(sousTitre)}</small></span>`
+      + `${cadrer ? `<a href="#" id="ofmCadrer" class="lien-petit">Recadrer</a>` : ""}<span class="pastille-nb">${nb}</span></div>`;
+  }
+
+  /* ---------- Panneau « Couches » (fond, couches affichées, outils) ---------- */
+  function majCouches() {
+    const c = document.getElementById("couchesContenu");
+    if (!c) return;
+    const bossyOn = mode === "ofm" && $("#fondBossy").classList.contains("actif");
+    const bossyLib = /charger/.test($("#fondBossy").textContent) ? "Bossy…" : "Bossy";
+    const places = items.filter((i) => i.forme).length;
+    const zVis = zones.filter((z) => z.visible !== false && !horsPeriode(z)).length;
+    const sw = (id, on) => `<button class="inter${on ? " on" : ""}" data-couche="${id}" role="switch" aria-checked="${on}"></button>`;
+    c.innerHTML = `
+      <div class="feuille-titre">Fond de carte<button id="couchesFermer" aria-label="Fermer">${ICO("fermer")}</button></div>
+      <div class="seg">
+        <button data-fond="ofm" class="${mode === "ofm" && !bossyOn ? "on" : ""}">${ICO("globe")}OFM</button>
+        <button data-fond="bossy" class="${bossyOn ? "on" : ""}">${ICO("carte")}${bossyLib}</button>
+        <button data-fond="capture" class="${mode === "capture" ? "on" : ""}">${ICO("image")}Capture</button>
+      </div>
+      <div class="feuille-titre">Couches</div>
+      <div class="ligne-resume">${ICO("notam", "i-notam")}<span class="zs-t">NOTAM<small>du briefing SOFIA</small></span><span class="pastille-nb">${places}/${items.length}</span>${sw("notam", !masquerNotam)}</div>
+      <div class="ligne-resume">${ICO("zone", "i-zone")}<span class="zs-t">Mes zones<small>ZRT saisies depuis les SUP AIP</small></span><span class="pastille-nb">${zVis}/${zones.length}</span>${sw("zones", !masquerZones)}</div>
+      <div class="ligne-resume">${ICO("cercle", "i-cercle")}<span class="zs-t">Cercles indicatifs<small>centre et rayon de la ligne Q</small></span>${sw("cercles", !masquerCercles)}</div>
+      <div class="feuille-titre">Outils</div>
+      <button class="ligne-resume" data-outil="skydemon">${ICO("route", "i-route")}<span class="zs-t">Importer une route SkyDemon</span>${ICO("chev", "chev")}</button>
+      <button class="ligne-resume" data-outil="zones">${ICO("crayon", "i-zone")}<span class="zs-t">Gérer Mes zones<small>ajouter, dates de SUP, couleurs</small></span>${ICO("chev", "chev")}</button>
+      <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>`;
+  }
+  function ouvrirCouches() { majCouches(); $("#couches").hidden = false; document.body.classList.add("feuille-ouverte"); }
+  function fermerCouches() { $("#couches").hidden = true; document.body.classList.remove("feuille-ouverte"); }
+  $("#couches").addEventListener("click", (e) => {
+    const t = e.target.closest("button, .feuille-voile");
+    if (!t) return;
+    if (t.classList.contains("feuille-voile") || t.id === "couchesFermer") { fermerCouches(); return; }
+    if (t.dataset.fond) {
+      const f = t.dataset.fond;
+      if (f === "capture") { if (mode !== "capture") choisirMode("capture"); }
+      else {
+        if (mode !== "ofm") choisirMode("ofm");
+        const b = $(f === "bossy" ? "#fondBossy" : "#fondOfm");
+        if (b) b.click();
+      }
+      setTimeout(majCouches, 80);
+      return;
+    }
+    if (t.dataset.couche) {
+      const k = t.dataset.couche;
+      if (k === "notam") { masquerNotam = !masquerNotam; try { localStorage.setItem("cSansNotam", masquerNotam ? "1" : "0"); } catch (err) {} }
+      if (k === "zones") { masquerZones = !masquerZones; try { localStorage.setItem("cSansZones", masquerZones ? "1" : "0"); } catch (err) {} }
+      if (k === "cercles") { masquerCercles = !masquerCercles; try { localStorage.setItem("cSansCercles", masquerCercles ? "1" : "0"); } catch (err) {} if (typeof majBoutons === "function") majBoutons(); }
+      afficherZones(); rafraichir(); majCouches(); majBadgeCouches();
+      return;
+    }
+    if (t.dataset.outil) {
+      const o = t.dataset.outil;
+      fermerCouches();
+      if (o === "skydemon") $("#routeFichier").click();
+      if (o === "kmz") $("#bossyFichier").click();
+      if (o === "zones") { const z = $("#zonesBloc"); z.open = true; setTimeout(() => z.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
+    }
+  });
+  function majBadgeCouches() {
+    const n = (masquerNotam ? 1 : 0) + (masquerZones ? 1 : 0);
+    document.querySelectorAll(".bdg-couches").forEach((b) => { b.textContent = n ? "−" + n : ""; b.hidden = !n; });
+  }
+  $("#cCouches").addEventListener("click", ouvrirCouches);
+  $("#routeCrayon").addEventListener("click", () => { routeEdition = !routeEdition; majRouteUI(); if (routeEdition) { const r = $("#ofmRoute"); r.focus(); r.select(); } });
+
   function choisirMode(m) {
     mode = m;
     try { localStorage.setItem("cMode", m); } catch (e) {}
