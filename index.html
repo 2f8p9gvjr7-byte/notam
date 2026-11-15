@@ -113,6 +113,10 @@
 
     <!-- Carte -->
     <section id="tab-carte" class="tab">
+      <div class="seg seg-niveau1" id="niveau1">
+        <button data-niveau="ofm"><svg class="ico"><use href="#i-globe"/></svg>Cartes numériques</button>
+        <button data-niveau="capture"><svg class="ico"><use href="#i-image"/></svg>Cartes image</button>
+      </div>
       <div class="bascule ancien">
         <button id="modeOfm" class="actif">🗺 Carte numérique</button>
         <button id="modeCapture">🖼 Ma capture</button>
@@ -123,6 +127,10 @@
       </div>
       <div id="rtbaCarte" hidden></div>
       <div id="ofmBloc">
+        <div class="capture-barre sous-barre" id="sousNum">
+          <div class="seg"><button data-fondnum="ofm">OFM</button><button data-fondnum="bossy">Bossy</button></div>
+          <button id="nCouches" class="c-outil c-couches" aria-label="Couches"><svg class="ico"><use href="#i-couches"/></svg></button>
+        </div>
         <div class="route-actions ancien">
           <button id="routeModifier" hidden>✎ Modifier la route</button>
           <label class="route-fichier" for="routeFichier">📂 Importer SkyDemon</label>
@@ -143,8 +151,8 @@
       <div id="captureBloc" hidden>
       <div class="capture-barre">
         <div class="seg seg-slot">
-          <button id="slotBossy" class="actif"><svg class="ico"><use href="#i-carte"/></svg>Bossy</button>
-          <button id="slotAzba"><svg class="ico"><use href="#i-carte"/></svg>AZBA</button>
+          <button id="slotBossy" class="actif">Capture Bossy</button>
+          <button id="slotAzba">Capture AZBA</button>
         </div>
         <button id="cCouches" class="c-outil c-couches" aria-label="Couches"><svg class="ico"><use href="#i-couches"/></svg></button>
       </div>
@@ -155,7 +163,7 @@
         <button id="cPartager" class="c-outil" hidden><svg class="ico"><use href="#i-partager"/></svg>Partager</button>
         <button id="cCercles" class="ancien" hidden>◯ Cercles</button>
       </div>
-      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Couches → Bossy</b>, sans capture ni calage.</p>
+      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Cartes numériques → Bossy</b>, sans capture ni calage.</p>
       <div id="cEtape"></div>
       <div id="cZone" class="carte-zone" hidden>
         <img id="cImg" alt="Capture de carte">
@@ -277,7 +285,7 @@
       <details><summary>5. Ma capture (Bossy / AZBA)</summary>
         <ol>
           <li>Capture d'écran de la carte (nord en haut). Pour l'AZBA : réglez d'abord 📅 sur l'heure du vol.</li>
-          <li><b>Couches → Capture</b>, choisissez <b>Bossy</b> ou <b>AZBA</b>, puis <b>Image</b>.</li>
+          <li><b>Cartes image</b>, choisissez <b>Capture Bossy</b> ou <b>Capture AZBA</b>, puis <b>Image</b>.</li>
           <li>Calage en 2 points, <b>éloignés et en diagonale</b> :
             <ul><li>Bossy : croisement du quadrillage (degrés écrits au bord) ou centre d'un terrain + code OACI ;</li>
             <li>AZBA : petit rond d'une ville + son nom (Nancy, Mulhouse…).</li></ul></li>

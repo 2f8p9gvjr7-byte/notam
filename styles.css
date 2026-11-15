@@ -468,3 +468,12 @@ html.plein-actif, html.plein-actif body { overflow: hidden; }
 #tab-carte .capture-barre .c-couches { flex: none; width: 46px; padding: 0; border-radius: 11px; }
 .capture-barre .c-couches .ico { width: 21px; height: 21px; }
 .seg button.actif { background: var(--bleu); color: #0d1526; }
+
+/* 4.9.17 : menu à deux niveaux */
+.seg-niveau1 { margin: 0 0 8px; padding: 4px; border-radius: 12px; }
+.seg-niveau1 button { padding: 10px 0; font-size: 14.5px; }
+.seg-niveau1 button.on { background: var(--texte); color: #0d1526; }
+.sous-barre .seg button { padding: 7px 0; font-size: 14px; }
+#tab-carte .capture-barre .seg button { padding: 7px 0; }
+#ofmBloc.plein .sous-barre { display: none; }
+#sousNum #nCouches { display: none; }

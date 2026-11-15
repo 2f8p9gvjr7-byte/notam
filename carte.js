@@ -1362,11 +1362,11 @@
     const zVis = zones.filter((z) => z.visible !== false && !horsPeriode(z)).length;
     const sw = (id, on) => `<button class="inter${on ? " on" : ""}" data-couche="${id}" role="switch" aria-checked="${on}"></button>`;
     c.innerHTML = `
-      <div class="feuille-titre">Fond de carte<button id="couchesFermer" aria-label="Fermer">${ICO("fermer")}</button></div>
+      <div class="feuille-titre">Carte affichée<button id="couchesFermer" aria-label="Fermer">${ICO("fermer")}</button></div>
       <div class="seg">
         <button data-fond="ofm" class="${mode === "ofm" && !bossyOn ? "on" : ""}">${ICO("globe")}OFM</button>
         <button data-fond="bossy" class="${bossyOn ? "on" : ""}">${ICO("carte")}${bossyLib}</button>
-        <button data-fond="capture" class="${mode === "capture" ? "on" : ""}">${ICO("image")}Capture</button>
+        <button data-fond="capture" class="${mode === "capture" ? "on" : ""}">${ICO("image")}Image</button>
       </div>
       <div class="feuille-titre">Couches</div>
       <div class="ligne-resume">${ICO("notam", "i-notam")}<span class="zs-t">NOTAM<small>du briefing SOFIA</small></span><span class="pastille-nb">${places}/${items.length}</span>${sw("notam", !masquerNotam)}</div>
@@ -1417,6 +1417,19 @@
   $("#cCouches").addEventListener("click", ouvrirCouches);
   $("#routeCrayon").addEventListener("click", () => { routeEdition = !routeEdition; majRouteUI(); if (routeEdition) { const r = $("#ofmRoute"); r.focus(); r.select(); } });
 
+  /* Menu à deux niveaux : Cartes numériques (OFM / Bossy) · Cartes image (captures Bossy / AZBA) */
+  function majNiveaux() {
+    document.querySelectorAll("#niveau1 button").forEach((b) => b.classList.toggle("on", b.dataset.niveau === mode));
+    const bossyOn = $("#fondBossy").classList.contains("actif");
+    document.querySelectorAll("[data-fondnum]").forEach((b) => b.classList.toggle("on", b.dataset.fondnum === "bossy" ? bossyOn : !bossyOn));
+    const lb = document.querySelector('[data-fondnum="bossy"]');
+    if (lb) lb.textContent = /charger/.test($("#fondBossy").textContent) ? "Bossy (charger…)" : "Bossy";
+  }
+  document.querySelectorAll("#niveau1 button").forEach((b) => b.addEventListener("click", () => { if (mode !== b.dataset.niveau) choisirMode(b.dataset.niveau); majNiveaux(); }));
+  document.querySelectorAll("[data-fondnum]").forEach((b) => b.addEventListener("click", () => { const x = $(b.dataset.fondnum === "bossy" ? "#fondBossy" : "#fondOfm"); if (x) x.click(); setTimeout(majNiveaux, 100); }));
+  $("#nCouches").addEventListener("click", ouvrirCouches);
+  new MutationObserver(majNiveaux).observe($("#fondBossy"), { attributes: true, childList: true, characterData: true, subtree: true });
+
   function choisirMode(m) {
     mode = m;
     try { localStorage.setItem("cMode", m); } catch (e) {}
@@ -1425,6 +1438,7 @@
     $("#ofmBloc").hidden = m !== "ofm";
     $("#captureBloc").hidden = m !== "capture";
     $("#fondBascule").hidden = m !== "ofm";
+    majNiveaux();
     rafraichir();
   }
   var routeEdition = false;
@@ -1453,5 +1467,6 @@
   $("#modeOfm").classList.toggle("actif", mode === "ofm");
   $("#modeCapture").classList.toggle("actif", mode === "capture");
   afficherZones();
+  majNiveaux();
   lireImage().then((b) => { if (b) chargerBlob(b, false); else rafraichir(); });
 })();
