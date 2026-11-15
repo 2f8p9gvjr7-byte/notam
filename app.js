@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.22";
+const APP_VERSION = "4.9.23";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -346,7 +346,9 @@ let entete = null;
 function appliquerEntete(texte) {
   entete = lireEntetePIB(texte);
   if (!entete) return;
-  const sig = [entete.depart, entete.dureeMin, entete.plafondFt].join("|");
+  // Un nouveau briefing (autre heure de production) remet toujours les réglages de SOFIA ;
+  // recoller le même briefing garde ce que vous avez changé à la main.
+  const sig = [entete.production, entete.depart, entete.dureeMin, entete.plafondFt].join("|");
   let deja = null;
   try { deja = localStorage.getItem("tEntete"); } catch (e) {}
   if (deja === sig && tDep.value && !isNaN(new Date(tDep.value).getTime())) return;   // même briefing, réglages déjà en place
