@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.17";
+const APP_VERSION = "4.9.19";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -375,14 +375,15 @@ function chargerChoix(texte) {
   } catch (e) {}
 }
 function sauverChoix() { try { localStorage.setItem("tChoix", JSON.stringify({ sig: choixSig, choix })); } catch (e) {} }
+const IC = (i) => `<svg class="ico"><use href="#i-${i}"/></svg>`;
 function majCompteur() {
   const nb = listeTriee.filter(estCoche).length;
   const b = $("#btnPdf");
-  if (b && !b.disabled) b.textContent = `📄 PDF des NOTAM cochés (${nb})`;
+  if (b && !b.disabled) b.innerHTML = `${IC("pdf")}PDF (${nb})`;
   const c = $("#nbCoches");
   if (c) c.textContent = nb;
   const l = $("#btnLire");
-  if (l) l.textContent = `📖 Lire à l'écran (${nb})`;
+  if (l) l.innerHTML = `${IC("livre")}Lire (${nb})`;
 }
 
 /* RTBA actif pendant le vol, d'après le NOTAM SOFIA « ZONES AIRFORCE RTBA ACT » */
@@ -436,23 +437,23 @@ function trierInterne() {
   const nbEcartes = r.total - r.garder.length;
 
   let html = `<div class="bilan">
-    <div class="chiffres"><b>${r.garder.length}</b> à lire · ${nbEcartes} écarté${nbEcartes > 1 ? "s" : ""} <small>/ ${r.total}</small></div>
-    ${entete && (entete.de || entete.vers) ? `<div class="creneau">Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}${entete.production ? " · produit le " + fDate(entete.production) : ""}</div>` : ""}
-    ${entete && entete.production && Date.now() - entete.production > 12 * 3600000 ? `<div class="creneau vieux">⚠ Briefing produit il y a ${Math.round((Date.now() - entete.production) / 3600000) >= 48 ? Math.floor((Date.now() - entete.production) / 86400000) + " jours" : Math.round((Date.now() - entete.production) / 3600000) + " h"} : refaites-le sur SOFIA avant de voler.</div>` : ""}
-    <div class="creneau">Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
-    <div class="creneau">Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</div>
-    <button id="btnLire" class="btn-lire">📖 Lire à l'écran</button>
-    <button id="btnPdf" class="btn-pdf">📄 PDF des NOTAM cochés</button>
+    <div class="kpis"><div class="kpi lire"><b>${r.garder.length}</b><span>à lire</span></div><div class="kpi"><b>${nbEcartes}</b><span>écarté${nbEcartes > 1 ? "s" : ""}</span></div><div class="kpi"><b>${r.total}</b><span>au total</span></div></div>
+    ${entete && (entete.de || entete.vers) ? `<div class="creneau">${IC("route")}Briefing SOFIA ${esc(entete.de || "")} → ${esc(entete.vers || "")}${entete.production ? " · produit le " + fDate(entete.production) : ""}</div>` : ""}
+    ${entete && entete.production && Date.now() - entete.production > 12 * 3600000 ? `<div class="creneau vieux">${IC("alerte")}Briefing produit il y a ${Math.round((Date.now() - entete.production) / 3600000) >= 48 ? Math.floor((Date.now() - entete.production) / 86400000) + " jours" : Math.round((Date.now() - entete.production) / 3600000) + " h"} : refaites-le sur SOFIA avant de voler.</div>` : ""}
+    <div class="creneau">${IC("horloge")}Vol du ${fJour(trier.t1)} · ${fHeure(trier.t1)} → ${fHeure(trier.t2)} (heure de Paris), jusqu'à ${alt.toLocaleString("fr-FR")} ft</div>
+    <div class="creneau">${IC("coche")}<span>Cochez / décochez les NOTAM : <b id="nbCoches">0</b> iront dans le PDF.</span></div>
+    <div class="bilan-btns"><button id="btnLire" class="btn-lire">${IC("livre")}Lire</button>
+    <button id="btnPdf" class="btn-pdf">${IC("pdf")}PDF</button></div>
   </div>`;
   dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete, rtba: rtbaPendant(r, trier.t1, trier.t2) };
   const lr = htmlRTBA(dernierTri.rtba);
-  if (lr) html = html.replace('<div class="creneau">Cochez', lr + '<div class="creneau">Cochez');
+  if (lr) html = html.replace('<div class="creneau">' + IC("coche"), lr + '<div class="creneau">' + IC("coche"));
   chargerJsPDF();
 
-  html += `<h2 class="section">À LIRE</h2>`;
+  html += `<h2 class="section">À lire <span class="pastille-nb">${r.garder.length}</span></h2>`;
   html += r.garder.length ? r.garder.map((n) => ajouter(n)).join("") : `<p class="note">Rien ne vous concerne sur ce créneau.</p>`;
 
-  html += `<h2 class="section">ÉCARTÉS</h2>`;
+  html += `<h2 class="section">Écartés <span class="pastille-nb">${nbEcartes}</span></h2>`;
   for (const [cle, arr] of Object.entries(r.ecarter)) {
     if (!arr.length) continue;
     html += `<details class="ecartes"><summary>${esc(RAISONS[cle])} (${arr.length})</summary>${arr.map((n) => {

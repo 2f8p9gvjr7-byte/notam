@@ -1110,6 +1110,102 @@
     dessinerOFM();
   }
 
+  /* ---------- Couloir SOFIA : largeur demandée dans SOFIA autour de la route briefée ---------- */
+  let couloirNm = 10, couloirCote = false, couloirOn = true;
+  try {
+    couloirNm = +(localStorage.getItem("cCouloirNm") || 10);
+    couloirCote = localStorage.getItem("cCouloirCote") === "1";
+    couloirOn = localStorage.getItem("cCouloirOff") !== "1";
+  } catch (e) {}
+  const demiCouloir = () => (couloirCote ? couloirNm : couloirNm / 2);
+  function sigBriefing() {
+    const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null;
+    return en && (en.de || en.vers) ? [en.de, en.vers, en.production || en.depart].join("|") : "";
+  }
+  function refCouloir(pts) {
+    const sig = sigBriefing();
+    if (!sig) return null;
+    let ref = null;
+    try { ref = JSON.parse(localStorage.getItem("cCouloirRef") || "null"); } catch (e) {}
+    if ((!ref || ref.sig !== sig) && pts.length > 1) {   // nouveau briefing : le couloir suit la route du moment
+      ref = { sig, pts: pts.map((p) => [p.lat, p.lon]) };
+      const en = dernierTri.entete;
+      if (en && en.couloirNm > 0) { couloirNm = en.couloirNm; try { localStorage.setItem("cCouloirNm", String(couloirNm)); } catch (e) {} }
+      try { localStorage.setItem("cCouloirRef", JSON.stringify(ref)); } catch (e) {}
+    }
+    return ref && ref.sig === sig ? ref : null;
+  }
+  function recalerCouloir() {
+    const { pts } = routePoints();
+    const sig = sigBriefing();
+    if (!sig || pts.length < 2) { toast("Il faut un briefing SOFIA collé et une route d'au moins deux points."); return; }
+    try { localStorage.setItem("cCouloirRef", JSON.stringify({ sig, pts: pts.map((p) => [p.lat, p.lon]) })); } catch (e) {}
+    toast("Couloir recalé sur votre route actuelle : faites-le seulement si votre briefing SOFIA a été fait avec ces points.", 5500);
+    dessinerOFM();
+  }
+  // Projection locale en NM (assez juste à l'échelle d'une navigation)
+  function projNm(lat0) {
+    const k = Math.cos((lat0 * Math.PI) / 180);
+    return { xy: (lat, lon) => [lon * 60 * k, lat * 60], ll: (x, y) => [y / 60, x / (60 * k)] };
+  }
+  function distSeg(p, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+    let t = L2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  }
+  // Contour du couloir : demi-largeur r de part et d'autre, bouts et virages arrondis
+  function contourCouloir(ref, r) {
+    const P = projNm(ref[0][0]);
+    const xy = ref.map(([la, lo]) => P.xy(la, lo));
+    const cote = (sens) => {
+      const out = [];
+      for (let i = 0; i < xy.length - 1; i++) {
+        const [ax, ay] = xy[i], [bx, by] = xy[i + 1];
+        const L = Math.hypot(bx - ax, by - ay) || 1;
+        const nx = (-(by - ay) / L) * sens, ny = ((bx - ax) / L) * sens;
+        if (i > 0) {     // virage : petit arc autour du point tournant
+          const prev = out[out.length - 1];
+          const a0 = Math.atan2(prev[1] - ay, prev[0] - ax), a1 = Math.atan2(ny, nx);
+          let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+          for (let k = 1; k < 8; k++) out.push([ax + r * Math.cos(a0 + (d * k) / 8), ay + r * Math.sin(a0 + (d * k) / 8)]);
+        }
+        out.push([ax + nx * r, ay + ny * r], [bx + nx * r, by + ny * r]);
+      }
+      return out;
+    };
+    const bout = (c, de) => { const o = []; for (let k = 1; k < 12; k++) { const a = de + (Math.PI * k) / 12; o.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]); } return o; };
+    const g = cote(1), d = cote(-1).reverse();
+    const [ex, ey] = xy[xy.length - 1], [px, py] = xy[xy.length - 2];
+    const [sx, sy] = xy[0], [qx, qy] = xy[1];
+    const angFin = Math.atan2(-(ex - px), ey - py), angDeb = Math.atan2(qx - sx, -(qy - sy));
+    const poly = [...g, ...bout([ex, ey], angFin), ...d, ...bout([sx, sy], angDeb)];
+    return poly.map(([x, y]) => P.ll(x, y));
+  }
+  // Parties de la route actuelle hors du couloir
+  function horsCouloir(pts, ref, r) {
+    const P = projNm(ref[0][0]);
+    const R = ref.map(([la, lo]) => P.xy(la, lo));
+    const dmin = (q) => { let m = Infinity; for (let i = 0; i < R.length - 1; i++) m = Math.min(m, distSeg(q, R[i], R[i + 1])); return m; };
+    const morceaux = []; let cur = null, horsNm = 0, maxEcart = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = P.xy(pts[i].lat, pts[i].lon), b = P.xy(pts[i + 1].lat, pts[i + 1].lon);
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 0.25));
+      for (let k = 0; k <= n; k++) {
+        const q = [a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n];
+        const e = dmin(q) - r;
+        if (e > 0.05) {
+          maxEcart = Math.max(maxEcart, e);
+          if (!cur) { cur = []; morceaux.push(cur); }
+          if (cur.length) horsNm += Math.hypot(q[0] - cur[cur.length - 1][0], q[1] - cur[cur.length - 1][1]);
+          cur.push(q);
+        } else cur = null;
+      }
+      cur = null;
+    }
+    return { morceaux: morceaux.filter((m) => m.length > 1).map((m) => m.map(([x, y]) => P.ll(x, y))), horsNm, maxEcart };
+  }
+
   function dessinerRoute(bornes) {
     const { pts, inconnus } = routePoints();
     const info = $("#ofmRouteInfo");
@@ -1171,6 +1267,18 @@
       majRouteUI();
       return;
     }
+    let ligneCouloir = "";
+    const ref = !circuit && couloirOn && pts.length > 1 ? refCouloir(pts) : null;
+    if (ref && ref.pts.length > 1) {
+      const r = demiCouloir();
+      L.polygon(contourCouloir(ref.pts, r), { color: "#1e88e5", weight: 2, dashArray: "6 6", fill: true, fillColor: "#1e88e5", fillOpacity: 0.07, interactive: false }).addTo(ofmCouche);
+      const h = horsCouloir(pts, ref.pts, r);
+      h.morceaux.forEach((m) => L.polyline(m, { color: "#ff6d00", weight: 7, opacity: 0.95, interactive: false }).addTo(ofmCouche));
+      const lib = `Couloir SOFIA ${couloirNm} NM ${couloirCote ? "de chaque côté" : "au total"}`;
+      ligneCouloir = h.morceaux.length
+        ? `<div class="couloir-alerte">⚠ <b>Route hors du couloir</b> sur ${Math.max(1, Math.round(h.horsNm))} NM (jusqu'à ${h.maxEcart.toFixed(1).replace(".", ",")} NM au-delà, en orange). Les NOTAM de ce secteur ne sont peut-être pas dans votre briefing : refaites-le dans SOFIA avec ces points, puis <a href="#" id="couloirRecaler">recalez le couloir</a>.</div>`
+        : `<div class="couloir-ok">${lib} : route entièrement dedans ✓</div>`;
+    }
     let total = 0;
     const branches = [];
     for (let i = 1; i < pts.length; i++) {
@@ -1180,7 +1288,10 @@
     }
     info.innerHTML = (branches.length ? branches.join(" · ") + (branches.length > 1 ? ` · total ${Math.round(total)} NM` : "") + " <small>(routes vraies, sans déclinaison)</small>" : "")
       + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "")
-      + (ligneLocal ? `<div class="ligne-local">${ligneLocal}</div>` : "");
+      + (ligneLocal ? `<div class="ligne-local">${ligneLocal}</div>` : "")
+      + ligneCouloir;
+    const rc = $("#couloirRecaler");
+    if (rc) rc.addEventListener("click", (e) => { e.preventDefault(); recalerCouloir(); });
     brancherRayon();
     majRouteUI();
   }
@@ -1372,11 +1483,23 @@
       <div class="ligne-resume">${ICO("notam", "i-notam")}<span class="zs-t">NOTAM<small>du briefing SOFIA</small></span><span class="pastille-nb">${places}/${items.length}</span>${sw("notam", !masquerNotam)}</div>
       <div class="ligne-resume">${ICO("zone", "i-zone")}<span class="zs-t">Mes zones<small>ZRT saisies depuis les SUP AIP</small></span><span class="pastille-nb">${zVis}/${zones.length}</span>${sw("zones", !masquerZones)}</div>
       <div class="ligne-resume">${ICO("cercle", "i-cercle")}<span class="zs-t">Cercles indicatifs<small>centre et rayon de la ligne Q</small></span>${sw("cercles", !masquerCercles)}</div>
+      <div class="ligne-resume couloir-ligne">${ICO("route", "i-route")}<span class="zs-t">Couloir SOFIA<small>largeur demandée dans SOFIA</small></span>${sw("couloir", couloirOn)}</div>
+      <div class="couloir-reglage"${couloirOn ? "" : " hidden"}>
+        <select id="couloirNm">${[2, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50].map((v) => `<option value="${v}"${v === couloirNm ? " selected" : ""}>${v} NM</option>`).join("")}</select>
+        <div class="seg seg-mini"><button data-cote="0" class="${couloirCote ? "" : "on"}">au total</button><button data-cote="1" class="${couloirCote ? "on" : ""}">de chaque côté</button></div>
+      </div>
       <div class="feuille-titre">Outils</div>
       <button class="ligne-resume" data-outil="skydemon">${ICO("route", "i-route")}<span class="zs-t">Importer une route SkyDemon</span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="zones">${ICO("crayon", "i-zone")}<span class="zs-t">Gérer Mes zones<small>ajouter, dates de SUP, couleurs</small></span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>`;
   }
+  document.addEventListener("change", (e) => {
+    if (e.target && e.target.id === "couloirNm") {
+      couloirNm = +e.target.value;
+      try { localStorage.setItem("cCouloirNm", String(couloirNm)); } catch (err) {}
+      rafraichir();
+    }
+  });
   function ouvrirCouches() { majCouches(); $("#couches").hidden = false; document.body.classList.add("feuille-ouverte"); }
   function fermerCouches() { $("#couches").hidden = true; document.body.classList.remove("feuille-ouverte"); }
   $("#couches").addEventListener("click", (e) => {
@@ -1398,9 +1521,15 @@
       const k = t.dataset.couche;
       if (k === "notam") { masquerNotam = !masquerNotam; try { localStorage.setItem("cSansNotam", masquerNotam ? "1" : "0"); } catch (err) {} }
       if (k === "zones") { masquerZones = !masquerZones; try { localStorage.setItem("cSansZones", masquerZones ? "1" : "0"); } catch (err) {} }
+      if (k === "couloir") { couloirOn = !couloirOn; try { localStorage.setItem("cCouloirOff", couloirOn ? "0" : "1"); } catch (err) {} }
       if (k === "cercles") { masquerCercles = !masquerCercles; try { localStorage.setItem("cSansCercles", masquerCercles ? "1" : "0"); } catch (err) {} if (typeof majBoutons === "function") majBoutons(); }
       afficherZones(); rafraichir(); majCouches(); majBadgeCouches();
       return;
+    }
+    if (t.dataset.cote) {
+      couloirCote = t.dataset.cote === "1";
+      try { localStorage.setItem("cCouloirCote", couloirCote ? "1" : "0"); } catch (err) {}
+      rafraichir(); majCouches(); return;
     }
     if (t.dataset.outil) {
       const o = t.dataset.outil;

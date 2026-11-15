@@ -477,3 +477,39 @@ html.plein-actif, html.plein-actif body { overflow: hidden; }
 #tab-carte .capture-barre .seg button { padding: 7px 0; }
 #ofmBloc.plein .sous-barre { display: none; }
 #sousNum #nCouches { display: none; }
+
+/* 4.9.18 : Briefing au même style */
+.gros-coller { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.gros-coller .ico { width: 22px; height: 22px; }
+.aide-courte { font-size: 13px; margin: 0 2px 10px; }
+.vol-carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 14px; padding: 10px 12px 4px; margin-bottom: 10px; }
+.vol-titre { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 12.5px; color: var(--doux); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.lien-petit-btn { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--bord); color: var(--bleu); border-radius: 16px; padding: 4px 10px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.lien-petit-btn .ico { width: 15px; height: 15px; }
+.vol-carte .reglages { margin: 0; }
+.vol-carte .reglages input, .vol-carte .reglages select { background: var(--fond); }
+.champ textarea.gros-texte { height: 96px; min-height: 96px; font-size: 12px; }
+.bilan { padding: 12px; }
+.kpis { display: flex; gap: 8px; margin-bottom: 10px; }
+.kpi { flex: 1; background: var(--fond); border: 1px solid var(--bord); border-radius: 11px; padding: 8px 6px; text-align: center; }
+.kpi b { display: block; font-size: 24px; line-height: 1.1; font-family: var(--mono); }
+.kpi span { font-size: 12px; color: var(--doux); }
+.kpi.lire b { color: var(--orange); }
+.bilan .creneau { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin-top: 6px; }
+.bilan .creneau .ico { width: 16px; height: 16px; margin-top: 1px; color: var(--doux); }
+.bilan .creneau.vieux .ico { color: var(--rouge); }
+.bilan-btns { display: flex; gap: 8px; margin-top: 12px; }
+.bilan-btns button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin: 0 !important; font-size: 15px; }
+.bilan-btns .ico { width: 19px; height: 19px; }
+h2.section { display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 12.5px; color: var(--doux); text-transform: uppercase; letter-spacing: 1px; margin: 18px 4px 8px; }
+h2.section .pastille-nb { text-transform: none; letter-spacing: 0; }
+
+/* 4.9.19 : couloir SOFIA */
+.couloir-ok { margin-top: 4px; font-size: 12px; color: #64b5f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 600; }
+.couloir-alerte { margin-top: 6px; font-size: 12.5px; line-height: 1.35; color: #ffb74d; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.couloir-alerte a { color: #ffd180; }
+.couloir-reglage { display: flex; gap: 8px; align-items: center; margin: 6px 0 0 46px; }
+.couloir-reglage[hidden] { display: none; }
+.couloir-reglage select { background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 9px; padding: 7px 8px; font-size: 14px; }
+.seg-mini { flex: 1; margin: 0 !important; }
+.seg-mini button { padding: 6px 0 !important; font-size: 13px !important; }

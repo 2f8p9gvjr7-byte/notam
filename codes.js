@@ -963,6 +963,8 @@ function lireEntetePIB(texte) {
   const dst = T.match(new RegExp("\\bDESTINATION\\b[^\\d]{0,120}?\\b" + OACI + "\\b"));
   if (dpt) res.de = dpt[1];
   if (dst) res.vers = dst[1];
+  const larg = T.match(/\b(?:LARGEUR|COULOIR)\b[^\d]{0,60}?(\d{1,2}(?:[.,]\d)?)\s*(?:NM)?\b/);
+  if (larg) res.couloirNm = parseFloat(larg[1].replace(",", "."));
   return res.depart ? res : null;
 }
 
