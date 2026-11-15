@@ -452,3 +452,9 @@ h1 { font-size: 17px; letter-spacing: 1px; white-space: nowrap; }
 .lien-haut { padding: 5px 8px; font-size: 12.5px; }
 .note-ofm { font-size: 12px; margin: 6px 2px 0; }
 @media (max-width: 380px) { .lien-haut .ico { display: none; } }
+
+/* 4.9.14 : plein écran sans bloquer la page au retour ; rien sous la barre d'état */
+html.plein-actif, html.plein-actif body { overflow: hidden; }
+#ofmMap, #cZone, #zonesBloc, header { scroll-margin-top: calc(env(safe-area-inset-top) + 12px); }
+#ofmBloc.plein .leaflet-top { top: calc(env(safe-area-inset-top) + 12px); }
+#ofmBloc.plein .leaflet-right { right: 6px; }

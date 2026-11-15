@@ -1002,10 +1002,19 @@
     const p = $("#ofmPlein");
     if (p) p.innerHTML = ICO($("#ofmBloc").classList.contains("plein") ? "fermer" : "plein");
   }
+  let scrollAvantPlein = 0;
   function basculerPlein() {
     const b = $("#ofmBloc");
-    b.classList.toggle("plein");
-    document.body.style.overflow = b.classList.contains("plein") ? "hidden" : "";
+    const entre = !b.classList.contains("plein");
+    if (entre) scrollAvantPlein = window.scrollY || 0;
+    b.classList.toggle("plein", entre);
+    document.documentElement.classList.toggle("plein-actif", entre);
+    document.body.style.overflow = "";
+    if (!entre) {
+      if (editionRoute) basculerEdition();       // on sort aussi du mode « tracer la route »
+      // retour exactement où l'on était, en-tête et menus visibles
+      setTimeout(() => { window.scrollTo(0, scrollAvantPlein); if (window.scrollY < 0) window.scrollTo(0, 0); }, 30);
+    }
     majBoutons();
     setTimeout(() => ofm.invalidateSize(), 60);
   }
