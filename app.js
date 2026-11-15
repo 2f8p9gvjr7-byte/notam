@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.19";
+const APP_VERSION = "4.9.20";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -349,7 +349,7 @@ function appliquerEntete(texte) {
   const sig = [entete.depart, entete.dureeMin, entete.plafondFt].join("|");
   let deja = null;
   try { deja = localStorage.getItem("tEntete"); } catch (e) {}
-  if (deja === sig) return;
+  if (deja === sig && tDep.value && !isNaN(new Date(tDep.value).getTime())) return;   // même briefing, réglages déjà en place
   tDep.value = valeurLocale(entete.depart);
   if (entete.dureeMin) choisirDuree(entete.dureeMin);
   if (entete.plafondFt) tAlt.value = entete.plafondFt;
@@ -421,7 +421,7 @@ function trierInterne() {
   if (!texte.trim()) { zone.innerHTML = ""; return; }
   const dep = new Date(tDep.value).getTime();
   const dur = +tDur.value, alt = +tAlt.value || 99999;
-  if (isNaN(dep)) { zone.innerHTML = `<div class="erreur">Indiquez l'heure de départ.</div>`; return; }
+  if (isNaN(dep)) { zone.innerHTML = `<div class="erreur">${entete ? "Indiquez l'heure de départ." : "Heure de départ introuvable dans le texte collé : touchez « Départ maintenant » ou réglez-la ci-dessus. Si le problème revient, vérifiez que vous avez copié la page du briefing (liste des NOTAM) et pas le formulaire."}</div>`; return; }
 
   const r = trierBriefing(texte, dep, dur, alt);
   if (!r.total) {
