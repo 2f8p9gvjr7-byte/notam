@@ -34,6 +34,7 @@
   <symbol id="i-cible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></symbol>
   <symbol id="i-oeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-oeil-non" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/></symbol>
+  <symbol id="i-partager" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 12v8h14v-8"/></symbol>
   <symbol id="i-poubelle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
 </defs></svg>
   <header>
@@ -140,19 +141,21 @@
         <p class="note note-ofm">Fond OFM : cycle AIRAC en cours, connexion requise · touchez un numéro pour le détail.</p>
       </div>
       <div id="captureBloc" hidden>
-      <div class="bascule petite">
-        <button id="slotBossy" class="actif">Capture Bossy</button>
-        <button id="slotAzba">Capture AZBA</button>
+      <div class="capture-barre">
+        <div class="seg seg-slot">
+          <button id="slotBossy" class="actif"><svg class="ico"><use href="#i-carte"/></svg>Bossy</button>
+          <button id="slotAzba"><svg class="ico"><use href="#i-carte"/></svg>AZBA</button>
+        </div>
+        <button id="cCouches" class="c-outil c-couches" aria-label="Couches"><svg class="ico"><use href="#i-couches"/></svg></button>
       </div>
       <div class="actions actions-carte">
-        <button id="cCouches" class="c-couches"><svg class="ico"><use href="#i-couches"/></svg>Couches</button>
-        <label class="bouton-lien" for="cImage">🖼 Capture</label>
+        <label class="c-outil" for="cImage"><svg class="ico"><use href="#i-image"/></svg>Image</label>
         <input id="cImage" type="file" accept="image/*" hidden>
-        <button id="cRecaler" hidden>↺ Recaler</button>
-        <button id="cPartager" hidden>📤 Partager</button>
-        <button id="cCercles" hidden>◯ Cercles</button>
+        <button id="cRecaler" class="c-outil" hidden><svg class="ico"><use href="#i-cible"/></svg>Recaler</button>
+        <button id="cPartager" class="c-outil" hidden><svg class="ico"><use href="#i-partager"/></svg>Partager</button>
+        <button id="cCercles" class="ancien" hidden>◯ Cercles</button>
       </div>
-      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Carte numérique → Bossy</b>, sans capture ni calage.</p>
+      <p class="note bossy-charger">Vous avez la CartaBossy en fichier <b>.kmz</b> ? <label class="lien" for="bossyFichier">Chargez-la ici</label> : elle s'affichera dans <b>Couches → Bossy</b>, sans capture ni calage.</p>
       <div id="cEtape"></div>
       <div id="cZone" class="carte-zone" hidden>
         <img id="cImg" alt="Capture de carte">
@@ -274,7 +277,7 @@
       <details><summary>5. Ma capture (Bossy / AZBA)</summary>
         <ol>
           <li>Capture d'écran de la carte (nord en haut). Pour l'AZBA : réglez d'abord 📅 sur l'heure du vol.</li>
-          <li><b>🖼 Ma capture</b> → Capture Bossy ou Capture AZBA → <b>🖼 Capture</b>.</li>
+          <li><b>Couches → Capture</b>, choisissez <b>Bossy</b> ou <b>AZBA</b>, puis <b>Image</b>.</li>
           <li>Calage en 2 points, <b>éloignés et en diagonale</b> :
             <ul><li>Bossy : croisement du quadrillage (degrés écrits au bord) ou centre d'un terrain + code OACI ;</li>
             <li>AZBA : petit rond d'une ville + son nom (Nancy, Mulhouse…).</li></ul></li>

@@ -647,8 +647,8 @@
     const z = $("#cEtape");
     if (!image) {
       z.innerHTML = slot === "azba"
-        ? `<p class="aide">1. Sur le site <b>🗺 AZBA</b>, réglez la période (📅) sur <b>votre vol</b>, cadrez la région, et faites une <b>capture d'écran</b>.<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur <b>deux lieux connus éloignés</b> (ex. le point de Nancy puis celui de Besançon) : touchez le point de la ville, puis tapez son nom.</p>`
-        : `<p class="aide">1. Dans CartaBossy, faites une <b>capture d'écran</b> de la zone du vol (nord en haut).<br>2. Touchez <b>« 🖼 Capture »</b> et choisissez-la.<br>3. Calez-la sur deux croisements du quadrillage (ou deux lieux connus).</p>`;
+        ? `<p class="aide">1. Sur le site <b>🗺 AZBA</b>, réglez la période (📅) sur <b>votre vol</b>, cadrez la région, et faites une <b>capture d'écran</b>.<br>2. Touchez <b>« Image »</b> et choisissez-la.<br>3. Calez-la sur <b>deux lieux connus éloignés</b> (ex. le point de Nancy puis celui de Besançon) : touchez le point de la ville, puis tapez son nom.</p>`
+        : `<p class="aide">1. Dans CartaBossy, faites une <b>capture d'écran</b> de la zone du vol (nord en haut).<br>2. Touchez <b>« Image »</b> et choisissez-la.<br>3. Calez-la sur deux croisements du quadrillage (ou deux lieux connus).</p>`;
       z.innerHTML += `<p class="note">💻 Sur ordinateur : faites <b>Windows + Maj + S</b>, sélectionnez la zone de la carte, puis revenez ici et faites <b>Ctrl + V</b> — la capture se colle directement, sans passer par un dossier.</p>`;
       return;
     }

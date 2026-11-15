@@ -458,3 +458,13 @@ html.plein-actif, html.plein-actif body { overflow: hidden; }
 #ofmMap, #cZone, #zonesBloc, header { scroll-margin-top: calc(env(safe-area-inset-top) + 12px); }
 #ofmBloc.plein .leaflet-top { top: calc(env(safe-area-inset-top) + 12px); }
 #ofmBloc.plein .leaflet-right { right: 6px; }
+
+/* 4.9.16 : barre de la capture épurée */
+.capture-barre { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
+.capture-barre .seg { flex: 1; margin: 0; }
+.actions-carte { display: flex; gap: 8px; flex-wrap: nowrap; margin: 0 0 8px; }
+#tab-carte .c-outil { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--carte); border: 1px solid var(--bord); color: var(--texte); border-radius: 11px; padding: 9px 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+#tab-carte .c-outil[hidden] { display: none; }
+#tab-carte .capture-barre .c-couches { flex: none; width: 46px; padding: 0; border-radius: 11px; }
+.capture-barre .c-couches .ico { width: 21px; height: 21px; }
+.seg button.actif { background: var(--bleu); color: #0d1526; }
