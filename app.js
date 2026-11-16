@@ -2,7 +2,7 @@
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.29";
+const APP_VERSION = "4.9.31";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -402,8 +402,50 @@ function htmlRTBA(z) {
   const groupes = new Map();
   noms.forEach((n) => { const k = z[n].map(([a, b]) => `${fHeure(Math.max(a, dernierTri ? 0 : a))}→${fHeure(b)}`).join(", "); (groupes.get(k) || groupes.set(k, []).get(k)).push(n); });
   const court = (liste) => liste.map((n, i) => { const m = n.match(/^(R\d+)(.*)$/); return i && m && liste[0].startsWith(m[1]) ? m[2] : n; }).join(", ");
-  return `<div class="rtba-ligne">⚠ <b>RTBA actif pendant votre vol</b> : ${[...groupes].map(([k, l]) => `<b>${esc(court(l))}</b> ${k}`).join(" · ")} <small>(heure de Paris) — votre trait coupe-t-il ces branches ?</small></div>`;
+  // Le NOTAM RTBA de SOFIA liste les branches actives sans leur tracé. L'appli croise ces noms avec les tracés
+  // des zones R (fichier FFVP) et votre route ; pour une branche dont le tracé est inconnu, on vérifie à la main.
+  const plage = (n) => z[n].map(([a, b]) => `${fHeure(a)}→${fHeure(b)}`).join(", ");
+  const nm = (x) => (x < 10 ? x.toFixed(1).replace(".", ",") : String(Math.round(x)));
+  const azba = `<a href="https://www.sia.aviation-civile.gouv.fr/azbaEx/?lang=fr" target="_blank" rel="noopener" class="rtba-btn">Ouvrir la carte AZBA</a>`;
+  const v = typeof window.rtbaVerdict === "function" ? window.rtbaVerdict(noms) : null;
+  if (v) {
+    const coupe = noms.filter((n) => v[n].connu && v[n].coupe);
+    const proche = noms.filter((n) => v[n].connu && !v[n].coupe && v[n].dist < 3);
+    const loin = noms.filter((n) => v[n].connu && !v[n].coupe && v[n].dist >= 3).sort((a, b) => v[a].dist - v[b].dist);
+    const inconnu = noms.filter((n) => !v[n].connu);
+    const quoi = noms.length && v[noms[0]].local ? "votre zone de vol local" : "votre route";
+    let h = "";
+    if (coupe.length) h += `<div class="rtba-ligne">⛔ <b>RTBA actif sur ${quoi}</b> : ${coupe.map((n) => `<b>${esc(n)}</b> ${plage(n)}`).join(" · ")} <small>(heure de Paris). Contournement obligatoire pendant l'activité.</small><div class="rtba-actions">${azba}</div></div>`;
+    if (proche.length) h += `<div class="rtba-ligne rtba-proche">⚠ <b>RTBA actif tout près</b> : ${proche.map((n) => `<b>${esc(n)}</b> à ${nm(v[n].dist)} NM${v[n].local ? " du bord de votre zone" : ""}, ${plage(n)}`).join(" · ")} <small>(heure de Paris)</small></div>`;
+    if (inconnu.length) {
+      const cle = "rtbaVu|" + inconnu.slice().sort().join(",") + "|" + (dernierTri ? dernierTri.t1 : "");
+      let vu = false; try { vu = localStorage.getItem("cRtbaVu") === cle; } catch (e) {}
+      h += vu ? `<div class="rtba-ligne rtba-vu">✓ ${esc(inconnu.join(", "))} vérifié${inconnu.length > 1 ? "s" : ""} sur la carte AZBA <a href="#" data-rtba="revoir">revoir</a></div>`
+        : `<div class="rtba-ligne">⚠ <b>RTBA actif, tracé inconnu de l'appli</b> : ${inconnu.map((n) => `<b>${esc(n)}</b> ${plage(n)}`).join(" · ")} <small>: vérifiez sur la carte AZBA.</small><div class="rtba-actions">${azba}<button class="rtba-btn" data-rtba="ok" data-cle="${esc(cle)}">Vérifié : hors de ma route</button></div></div>`;
+    }
+    if (!coupe.length && !proche.length && loin.length) h += `<div class="rtba-ligne rtba-vu">✓ RTBA actifs pendant votre vol (${esc(loin.slice(0, 4).join(", "))}${loin.length > 4 ? "…" : ""}) : aucun ne touche ${quoi}, le plus proche (${esc(loin[0])}) à ${nm(v[loin[0]].dist)} NM${v[loin[0]].local ? " du bord de votre zone" : ""}.</div>`;
+    else if (loin.length) h += `<div class="rtba-loin">Autres RTBA actifs, loin de ${quoi} : ${esc(loin.join(", "))}</div>`;
+    return h;
+  }
+  // Pas encore de route : vérification à la main
+  const cle = "rtbaVu|" + noms.slice().sort().join(",") + "|" + (dernierTri ? dernierTri.t1 : "");
+  let vu = false;
+  try { vu = localStorage.getItem("cRtbaVu") === cle; } catch (e) {}
+  if (vu) return `<div class="rtba-ligne rtba-vu">✓ RTBA vérifiés sur la carte AZBA : hors de votre route <a href="#" data-rtba="revoir">revoir</a></div>`;
+  return `<div class="rtba-ligne">⚠ <b>RTBA actifs en France pendant votre vol</b> : ${[...groupes].map(([k, l]) => `<b>${esc(court(l))}</b> ${k}`).join(" · ")} <small>(heure de Paris). Tracez votre route dans Carte pour que l'appli vérifie, ou contrôlez sur la carte AZBA.</small>`
+    + `<div class="rtba-actions">${azba}<button class="rtba-btn" data-rtba="ok" data-cle="${esc(cle)}">Vérifié : hors de ma route</button></div></div>`;
 }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-rtba]");
+  if (!b) return;
+  e.preventDefault();
+  try {
+    if (b.dataset.rtba === "ok") localStorage.setItem("cRtbaVu", b.dataset.cle);
+    else localStorage.removeItem("cRtbaVu");
+  } catch (err) {}
+  const bloc = document.querySelector("#tResultat .rtba-bloc"); if (bloc) bloc.innerHTML = htmlRTBA(dernierTri && dernierTri.rtba);
+  const rc = document.getElementById("rtbaCarte"); if (rc) { rc.innerHTML = htmlRTBA(dernierTri && dernierTri.rtba); rc.hidden = !rc.innerHTML; }
+});
 function trier() {
   try { trierInterne(); }
   catch (err) {
@@ -449,7 +491,7 @@ function trierInterne() {
   </div>`;
   dernierTri = { r, t1: trier.t1, t2: trier.t2, alt, entete, rtba: rtbaPendant(r, trier.t1, trier.t2) };
   const lr = htmlRTBA(dernierTri.rtba);
-  if (lr) html = html.replace('<div class="creneau">' + IC("coche"), lr + '<div class="creneau">' + IC("coche"));
+  if (lr) html = html.replace('<div class="creneau">' + IC("coche"), '<div class="rtba-bloc">' + lr + '</div><div class="creneau">' + IC("coche"));
   chargerJsPDF();
 
   html += `<h2 class="section">À lire <span class="pastille-nb">${r.garder.length}</span></h2>`;

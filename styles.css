@@ -524,3 +524,13 @@ h2.section .pastille-nb { text-transform: none; letter-spacing: 0; }
 #ofmMap.regle .leaflet-interactive:not(.mesure-poignee) { pointer-events: none !important; }
 .mesure-poignee span { display: block; width: 18px; height: 18px; margin: 4px; border-radius: 50%; background: #111; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); box-sizing: border-box; }
 .mesure-poignee { cursor: grab; }
+/* 4.9.30 : alerte RTBA */
+.rtba-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.rtba-btn { flex: 1; text-align: center; background: transparent; border: 1px solid rgba(255,138,128,.6); color: #ffcdd2; border-radius: 10px; padding: 7px 8px; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.rtba-vu { border-color: rgba(129,199,132,.5) !important; background: rgba(129,199,132,.08) !important; color: #a5d6a7 !important; font-size: 13px; }
+.rtba-vu a { color: #a5d6a7; margin-left: 6px; }
+
+/* 4.9.31 : RTBA croisés avec la route */
+.rtba-proche { border-color: rgba(255,183,77,.6) !important; background: rgba(255,183,77,.08) !important; color: #ffcc80 !important; }
+.rtba-loin { font-size: 12px; color: var(--doux); margin: 4px 2px 0; }
+#rtbaCarte .rtba-ligne + .rtba-ligne, #rtbaCarte .rtba-ligne + .rtba-loin { margin-top: 6px; }

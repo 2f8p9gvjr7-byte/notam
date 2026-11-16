@@ -533,6 +533,8 @@
     const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null;
     const h = d && typeof htmlRTBA === "function" ? htmlRTBA(d.rtba) : "";
     el.innerHTML = h; el.hidden = !h;
+    const bloc = document.querySelector("#tResultat .rtba-bloc");   // même verdict dans Briefing
+    if (bloc) bloc.innerHTML = h;
   }
   function bandeauCreneau(parent) {
     majRTBA();
@@ -724,6 +726,70 @@
     $("#cCercles").classList.toggle("off", masquerCercles);
   }
   window.majCarte = rafraichir;
+
+  /* ---------- RTBA : la route coupe-t-elle une branche active ? (tracés FFVP, la carte AZBA fait foi) ---------- */
+  function polysZone(nom) { return typeof ZONES_R !== "undefined" && ZONES_R[nom] ? ZONES_R[nom].p : null; }
+  function segInter(a, b, c, d) {
+    const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+    return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+  }
+  function dansPoly(q, R) {
+    let in_ = false;
+    for (let i = 0, j = R.length - 1; i < R.length; j = i++) {
+      if ((R[i][1] > q[1]) !== (R[j][1] > q[1]) && q[0] < ((R[j][0] - R[i][0]) * (q[1] - R[i][1])) / (R[j][1] - R[i][1]) + R[i][0]) in_ = !in_;
+    }
+    return in_;
+  }
+  window.rtbaVerdict = function (noms) {
+    let rp;
+    try { rp = routePoints(); } catch (e) { return null; }
+    const pts = rp && rp.pts;
+    if (!pts || !pts.length) return null;
+    const P = projNm(pts[0].lat);
+    const Q = pts.map((p) => P.xy(p.lat, p.lon));
+    const surPlace = pts.every((p) => distCap(pts[0], p).nm < 0.5);
+    const circuit = !surPlace && pts.length > 2 && distCap(pts[0], pts[pts.length - 1]).nm < 0.5;
+    const local = surPlace || circuit;
+    const res = {};
+    noms.forEach((nom) => {
+      const polys = polysZone(nom);
+      if (!polys) { res[nom] = { connu: false }; return; }
+      let coupe = false, dist = Infinity;
+      polys.forEach((poly) => {
+        const R = poly.map(([la, lo]) => P.xy(la, lo));
+        if (local) {
+          const c = Q[0];
+          if (dansPoly(c, R)) { coupe = true; dist = 0; }
+          for (let i = 0; i < R.length - 1; i++) dist = Math.min(dist, Math.max(0, distSeg(c, R[i], R[i + 1]) - rayonLocal));
+          if (dist === 0) coupe = true;
+          return;
+        }
+        if (Q.some((q) => dansPoly(q, R))) { coupe = true; dist = 0; }
+        for (let i = 0; i < Q.length - 1; i++) for (let j = 0; j < R.length - 1; j++) {
+          if (segInter(Q[i], Q[i + 1], R[j], R[j + 1])) { coupe = true; dist = 0; }
+          dist = Math.min(dist, distSeg(R[j], Q[i], Q[i + 1]), distSeg(Q[i], R[j], R[j + 1]), distSeg(Q[i + 1], R[j], R[j + 1]));
+        }
+        if (Q.length === 1) for (let j = 0; j < R.length - 1; j++) dist = Math.min(dist, distSeg(Q[0], R[j], R[j + 1]));
+      });
+      res[nom] = { connu: true, coupe, dist, local };
+    });
+    return res;
+  };
+  // Branches RTBA actives pendant le vol, dessinées en rouge sur la carte
+  function dessinerRTBA() {
+    const d = typeof dernierTri !== "undefined" && dernierTri ? dernierTri : null;
+    if (!d || !d.rtba || !ofmCouche) return;
+    Object.entries(d.rtba).forEach(([nom, plages]) => {
+      const polys = polysZone(nom); if (!polys) return;
+      const z = ZONES_R[nom];
+      const h = plages.map(([a, b]) => `${fHeure(a)}→${fHeure(b)}`).join(", ");
+      polys.forEach((poly) => {
+        L.polygon(poly, { color: "#e53935", weight: 2, fillColor: "#e53935", fillOpacity: 0.18, dashArray: "2 4" })
+          .bindPopup(`<b>RTBA ${esc(nom)}${z.nom ? " " + esc(z.nom) : ""}</b><br>Active ${h} (heure de Paris)<br>${esc(z.bas)} → ${esc(z.haut)}<br><small class="ofm-approx">Tracé FFVP du ${ZONES_R_EDITION}, simplifié : la carte AZBA fait foi.</small>`)
+          .addTo(ofmCouche);
+      });
+    });
+  }
 
   function chargerBlob(blob, nouveau) {
     const url = URL.createObjectURL(blob);
@@ -1431,6 +1497,7 @@
       + (inconnus.length ? ` <span class="warn">⚠ Inconnu : ${esc(inconnus.join(", "))}</span>` : "")
       + (ligneLocal ? `<div class="ligne-local">${ligneLocal}</div>` : "")
       + ligneCouloir;
+    majRTBA();
     const rc = $("#couloirRecaler");
     if (rc) rc.addEventListener("click", (e) => { e.preventDefault(); recalerCouloir(); });
     brancherRayon();
@@ -1452,6 +1519,7 @@
     if (!ofm) return;
     ofmCouche.clearLayers();
     for (const k in marqueursOFM) delete marqueursOFM[k];
+    if (!masquerNotam) dessinerRTBA();
     const bornes = [];
     zonesOFM();
     dessinerRoute(bornes);
