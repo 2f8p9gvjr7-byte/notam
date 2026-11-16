@@ -1186,6 +1186,43 @@
     const poly = [...g, ...bout([ex, ey], angFin), ...d, ...bout([sx, sy], angDeb)];
     return poly.map(([x, y]) => P.ll(x, y));
   }
+  /* Zone couverte par le briefing = couloir ∪ cercles autour des terrains.
+     On ne trace que son contour extérieur : une seule ligne, sans les traits intérieurs qui se croisent. */
+  function zoneBriefee(ref, r, rAd) {
+    const P = projNm(ref[0][0]);
+    const R = ref.map(([la, lo]) => P.xy(la, lo));
+    const ads = rAd > r ? [R[0], R[R.length - 1]] : [];
+    const f = (q) => {
+      let m = Infinity;
+      for (let i = 0; i < R.length - 1; i++) m = Math.min(m, distSeg(q, R[i], R[i + 1]) - r);
+      ads.forEach((c) => { m = Math.min(m, Math.hypot(q[0] - c[0], q[1] - c[1]) - rAd); });
+      return m;
+    };
+    const densifier = (xy) => {
+      const o = [];
+      for (let i = 0; i < xy.length; i++) {
+        const a = xy[i], b = xy[(i + 1) % xy.length];
+        const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.3));
+        for (let k = 0; k < n; k++) o.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
+      }
+      return o;
+    };
+    const contours = [densifier(contourCouloir(ref, r).map(([la, lo]) => P.xy(la, lo)))];
+    ads.forEach((c) => { const o = []; for (let k = 0; k < 180; k++) { const t = (2 * Math.PI * k) / 180; o.push([c[0] + rAd * Math.cos(t), c[1] + rAd * Math.sin(t)]); } contours.push(o); });
+    const runs = [];
+    contours.forEach((pts) => {
+      const ext = pts.map((q) => f(q) > -0.02);
+      const debut = ext.indexOf(false);           // démarrer sur un point intérieur pour ne pas couper un tronçon en deux
+      const n = pts.length, ordre = debut < 0 ? [...Array(n).keys(), 0] : Array.from({ length: n + 1 }, (_, k) => (debut + k) % n);
+      let cur = null;
+      ordre.forEach((i) => {
+        if (ext[i]) { if (!cur) { cur = []; runs.push(cur); } cur.push(P.ll(pts[i][0], pts[i][1])); }
+        else cur = null;
+      });
+    });
+    return runs.filter((x) => x.length > 1);
+  }
+
   // Parties de la route actuelle hors du couloir
   function horsCouloir(pts, ref, r, rAd) {
     const P = projNm(ref[0][0]);
@@ -1282,8 +1319,10 @@
     const ref = !circuit && couloirOn && pts.length > 1 ? refCouloir(pts) : null;
     if (ref && ref.pts.length > 1) {
       const r = demiCouloir(), rAd = rayonTerrains();
-      if (rAd > r) [ref.pts[0], ref.pts[ref.pts.length - 1]].forEach((c) => L.circle(c, { radius: rAd * 1852, color: "#1e88e5", weight: 2, dashArray: "6 6", fill: true, fillColor: "#1e88e5", fillOpacity: 0.05, interactive: false }).addTo(ofmCouche));
-      L.polygon(contourCouloir(ref.pts, r), { color: "#1e88e5", weight: 2, dashArray: "6 6", fill: true, fillColor: "#1e88e5", fillOpacity: 0.07, interactive: false }).addTo(ofmCouche);
+      zoneBriefee(ref.pts, r, rAd).forEach((run) => {
+        L.polyline(run, { color: "#ffffff", weight: 6, opacity: 0.7, smoothFactor: 0.3, interactive: false }).addTo(ofmCouche);
+        L.polyline(run, { color: "#00838f", weight: 3, opacity: 0.95, smoothFactor: 0.3, interactive: false }).addTo(ofmCouche);
+      });
       const h = horsCouloir(pts, ref.pts, r, rAd);
       h.morceaux.forEach((m) => L.polyline(m, { color: "#ff6d00", weight: 7, opacity: 0.95, interactive: false }).addTo(ofmCouche));
       const lib = `Couloir SOFIA ${couloirNm} NM ${couloirCote ? "de chaque côté" : "au total"}${rAd > r ? ` + ${rAd} NM autour des terrains` : ""}`;
