@@ -519,3 +519,8 @@ h2.section .pastille-nb { text-transform: none; letter-spacing: 0; }
 .mesure-etiq { display: inline-block; transform: translate(-50%, -140%); white-space: nowrap; background: #111; color: #fff; font: 700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.5); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
 #ofmMap.regle { cursor: crosshair; }
 .ofm-boutons a#ofmRegle.on { background: #111 !important; border-color: #fff !important; }
+
+/* 4.9.28 : règle au-dessus des zones et NOTAM, bouts déplaçables */
+#ofmMap.regle .leaflet-interactive:not(.mesure-poignee) { pointer-events: none !important; }
+.mesure-poignee span { display: block; width: 18px; height: 18px; margin: 4px; border-radius: 50%; background: #111; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); box-sizing: border-box; }
+.mesure-poignee { cursor: grab; }

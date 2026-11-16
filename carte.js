@@ -1084,34 +1084,53 @@
   const fmtCoord = (lat, lon) => deg2(lat, 2) + (lat >= 0 ? "N" : "S") + deg2(lon, 3) + (lon >= 0 ? "E" : "W");
 
   /* ---------- Mesure de distance : deux doigts posés sur la carte, ou la règle (deux touches) ---------- */
-  let mesureCouche = null, regleOn = false, regleA = null, mesureMinuteur = null;
-  function tracerMesure(a, b) {
-    if (!mesureCouche) return;
-    mesureCouche.clearLayers();
+  let mesureCouche = null, regleOn = false, regleA = null, mesureMinuteur = null, mes = null;
+  const poignee = () => L.divIcon({ className: "mesure-poignee", iconSize: [26, 26], iconAnchor: [13, 13], html: "<span></span>" });
+  function etiquetteMesure(a, b) {
     const dc = distCap({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
     const nm = dc.nm < 10 ? dc.nm.toFixed(1).replace(".", ",") : String(Math.round(dc.nm));
-    L.polyline([a, b], { color: "#000", weight: 6, opacity: 0.45, interactive: false }).addTo(mesureCouche);
-    L.polyline([a, b], { color: "#fff", weight: 3, dashArray: "8 6", interactive: false }).addTo(mesureCouche);
-    [a, b].forEach((p) => L.circleMarker(p, { radius: 6, color: "#fff", weight: 2, fillColor: "#111", fillOpacity: 1, interactive: false }).addTo(mesureCouche));
-    const mil = L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2);
-    L.marker(mil, { interactive: false, icon: L.divIcon({ className: "", iconSize: null, iconAnchor: [0, 0],
-      html: `<span class="mesure-etiq">${nm} NM · ${String(Math.round(dc.cap)).padStart(3, "0")}°</span>` }) }).addTo(mesureCouche);
+    return L.divIcon({ className: "", iconSize: null, iconAnchor: [0, 0], html: `<span class="mesure-etiq">${nm} NM · ${String(Math.round(dc.cap)).padStart(3, "0")}°</span>` });
   }
+  // Trait de mesure : les deux bouts sont des poignées que l'on peut faire glisser pour ajuster
+  function tracerMesure(a, b) {
+    if (!mesureCouche) return;
+    const mil = L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2);
+    if (mes) {
+      mes.l1.setLatLngs([a, b]); mes.l2.setLatLngs([a, b]);
+      if (!mes.mA.dragging || !mes.mA._glisse) mes.mA.setLatLng(a);
+      if (!mes.mB.dragging || !mes.mB._glisse) mes.mB.setLatLng(b);
+      mes.etiq.setLatLng(mil).setIcon(etiquetteMesure(a, b));
+      return;
+    }
+    mesureCouche.clearLayers();
+    const l1 = L.polyline([a, b], { color: "#000", weight: 6, opacity: 0.45, interactive: false }).addTo(mesureCouche);
+    const l2 = L.polyline([a, b], { color: "#fff", weight: 3, dashArray: "8 6", interactive: false }).addTo(mesureCouche);
+    const mA = L.marker(a, { draggable: true, icon: poignee(), zIndexOffset: 2000, bubblingMouseEvents: false }).addTo(mesureCouche);
+    const mB = L.marker(b, { draggable: true, icon: poignee(), zIndexOffset: 2000, bubblingMouseEvents: false }).addTo(mesureCouche);
+    const etiq = L.marker(mil, { interactive: false, icon: etiquetteMesure(a, b), zIndexOffset: 2100 }).addTo(mesureCouche);
+    mes = { l1, l2, mA, mB, etiq };
+    [mA, mB].forEach((m) => {
+      m.on("dragstart", () => { m._glisse = true; clearTimeout(mesureMinuteur); });
+      m.on("drag", () => tracerMesure(mA.getLatLng(), mB.getLatLng()));
+      m.on("dragend", () => { m._glisse = false; if (!regleOn) effacerMesure(6000); });
+    });
+  }
+  function viderMesure() { if (mesureCouche) mesureCouche.clearLayers(); mes = null; }
   function effacerMesure(apres) {
     clearTimeout(mesureMinuteur);
-    mesureMinuteur = setTimeout(() => { if (!regleOn && mesureCouche) mesureCouche.clearLayers(); }, apres || 0);
+    mesureMinuteur = setTimeout(() => { if (!regleOn) viderMesure(); }, apres || 0);
   }
   function basculerRegle() {
     regleOn = !regleOn; regleA = null;
     if (regleOn && editionRoute) basculerEdition();
     const b = $("#ofmRegle"); if (b) b.classList.toggle("on", regleOn);
     $("#ofmMap").classList.toggle("regle", regleOn);
-    if (regleOn) toast("Règle : touchez un premier point, puis un second. Touchez encore pour recommencer.", 4500);
+    if (regleOn) { ofm.closePopup(); toast("Règle : touchez deux points (même dans une zone). Faites glisser un bout pour ajuster ; touchez ailleurs pour recommencer.", 5000); }
     else effacerMesure(0);
   }
   function clicRegle(ll) {
-    if (!regleA) { regleA = ll; mesureCouche.clearLayers(); L.circleMarker(ll, { radius: 6, color: "#fff", weight: 2, fillColor: "#111", fillOpacity: 1, interactive: false }).addTo(mesureCouche); return; }
-    tracerMesure(regleA, ll); regleA = null;
+    if (!regleA) { regleA = ll; viderMesure(); L.circleMarker(ll, { radius: 7, color: "#fff", weight: 2, fillColor: "#111", fillOpacity: 1, interactive: false }).addTo(mesureCouche); return; }
+    viderMesure(); tracerMesure(regleA, ll); regleA = null;
   }
   function brancherDeuxDoigts() {
     const c = ofm.getContainer();
