@@ -1135,10 +1135,26 @@
   function brancherDeuxDoigts() {
     const c = ofm.getContainer();
     const pt = (t) => { const r = c.getBoundingClientRect(); return ofm.containerPointToLatLng(L.point(t.clientX - r.left, t.clientY - r.top)); };
-    let actif = false;
-    c.addEventListener("touchstart", (e) => { if (e.touches.length === 2) { actif = true; clearTimeout(mesureMinuteur); tracerMesure(pt(e.touches[0]), pt(e.touches[1])); } }, { passive: true });
-    c.addEventListener("touchmove", (e) => { if (actif && e.touches.length === 2) tracerMesure(pt(e.touches[0]), pt(e.touches[1])); }, { passive: true });
-    c.addEventListener("touchend", (e) => { if (actif && e.touches.length < 2) { actif = false; effacerMesure(4000); } }, { passive: true });
+    // Un zoom à deux doigts ne mesure rien : la mesure n'apparaît que si les deux doigts restent posés, immobiles, une demi-seconde.
+    let actif = false, attente = null, depart = null, derniers = null;
+    const ecart = (t) => Math.hypot(t[0].clientX - depart[0].x, t[0].clientY - depart[0].y) + Math.hypot(t[1].clientX - depart[1].x, t[1].clientY - depart[1].y);
+    const annuler = () => { clearTimeout(attente); attente = null; };
+    c.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 2) { annuler(); return; }
+      depart = [0, 1].map((i) => ({ x: e.touches[i].clientX, y: e.touches[i].clientY }));
+      derniers = [e.touches[0], e.touches[1]];
+      annuler();
+      attente = setTimeout(() => { attente = null; actif = true; clearTimeout(mesureMinuteur); tracerMesure(pt(derniers[0]), pt(derniers[1])); }, 500);
+    }, { passive: true });
+    c.addEventListener("touchmove", (e) => {
+      if (e.touches.length !== 2) return;
+      derniers = [e.touches[0], e.touches[1]];
+      if (attente && ecart(e.touches) > 18) annuler();          // les doigts bougent : c'est un zoom
+      if (actif) tracerMesure(pt(e.touches[0]), pt(e.touches[1]));
+    }, { passive: true });
+    c.addEventListener("touchend", (e) => {
+      if (e.touches.length < 2) { annuler(); if (actif) { actif = false; effacerMesure(4000); } }
+    }, { passive: true });
   }
 
   /* Mode « modifier la route » : toucher la carte ajoute un point, glisser déplace, toucher un point le supprime */
