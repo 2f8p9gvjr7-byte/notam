@@ -951,17 +951,24 @@ function lireEntetePIB(texte) {
   const res = {};
   // L'en-tête SOFIA est sur deux colonnes : selon la copie, on obtient « libellé valeur libellé valeur »
   // ou « libellé libellé valeur valeur ». Dans les deux cas, les valeurs viennent dans l'ordre des libellés.
+  // On ne cherche que dans l'en-tête du PIB (avant la liste des NOTAM), pour ne jamais prendre un nombre d'un NOTAM.
+  const iDeb = T.search(/DATE ET HEURE DE PRODUCTION/);
+  const iFin = T.search(/SELECTIONNER TOUS LES NOTAM|AERODROMES SELECTIONNES|AERODROME DE DEPART\s*:/);
+  const H = T.slice(iDeb >= 0 ? iDeb : 0, iFin > iDeb ? iFin : undefined);
   function paire(reA, reB, reVal, fenetre) {
-    const a = reA.exec(T), b = reB.exec(T);
+    const a = reA.exec(H), b = reB.exec(H);
     if (!a && !b) return [null, null];
-    const debut = Math.min(a ? a.index + a[0].length : Infinity, b ? b.index + b[0].length : Infinity);
-    const zone = T.slice(debut, debut + (fenetre || 260));
-    const g = new RegExp(reVal.source, "g");
-    const vals = [];
-    let m;
-    while ((m = g.exec(zone)) && vals.length < 2) vals.push(m);
-    if (a && b) return a.index < b.index ? [vals[0] || null, vals[1] || null] : [vals[1] || null, vals[0] || null];
-    return a ? [vals[0] || null, null] : [null, vals[0] || null];
+    const g = (s) => { const r = new RegExp(reVal.source, "g"); const o = []; let m; while ((m = r.exec(s)) && o.length < 2) o.push(m); return o; };
+    if (a && b) {
+      const [p, q] = a.index < b.index ? [a, b] : [b, a];
+      const entre = g(H.slice(p.index + p[0].length, q.index));
+      const apres = g(H.slice(q.index + q[0].length, q.index + q[0].length + (fenetre || 160)));
+      // « libellé valeur libellé valeur » : une valeur entre les deux libellés ; sinon « libellé libellé valeur valeur »
+      const [vp, vq] = entre.length ? [entre[0], apres[0] || null] : [apres[0] || null, apres[1] || null];
+      return a.index < b.index ? [vp, vq] : [vq, vp];
+    }
+    const x = a || b, v = g(H.slice(x.index + x[0].length, x.index + x[0].length + (fenetre || 160)))[0] || null;
+    return a ? [v, null] : [null, v];
   }
   const DATE = /(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/;
   const enUTC = (m) => (m ? Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]) : null);

@@ -513,3 +513,4 @@ h2.section .pastille-nb { text-transform: none; letter-spacing: 0; }
 .couloir-reglage select { background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 9px; padding: 7px 8px; font-size: 14px; }
 .seg-mini { flex: 1; margin: 0 !important; }
 .seg-mini button { padding: 6px 0 !important; font-size: 13px !important; }
+.couloir-lib { font-size: 13px; color: var(--doux); flex: 1; }

@@ -1118,7 +1118,9 @@
     couloirOn = localStorage.getItem("cCouloirOff") !== "1";
   } catch (e) {}
   const demiCouloir = () => (couloirCote ? couloirNm : couloirNm / 2);
-  const rayonTerrains = () => { const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null; return en && en.rayonNm > 0 ? en.rayonNm : 0; };
+  let rayonAd = 0;
+  try { rayonAd = +(localStorage.getItem("cRayonAd") || 0); } catch (e) {}
+  const rayonTerrains = () => rayonAd;
   function sigBriefing() {
     const en = typeof dernierTri !== "undefined" && dernierTri ? dernierTri.entete : null;
     return en && (en.de || en.vers) ? [en.de, en.vers, en.production || en.depart].join("|") : "";
@@ -1133,6 +1135,8 @@
       const en = dernierTri.entete;
       if (en && en.couloirNm > 0) {
         couloirNm = en.couloirNm; couloirCote = !!en.couloirCote;
+        rayonAd = en.rayonNm > 0 && en.rayonNm <= 100 ? en.rayonNm : 0;
+        try { localStorage.setItem("cRayonAd", String(rayonAd)); } catch (e) {}
         try { localStorage.setItem("cCouloirNm", String(couloirNm)); localStorage.setItem("cCouloirCote", couloirCote ? "1" : "0"); } catch (e) {}
       }
       try { localStorage.setItem("cCouloirRef", JSON.stringify(ref)); } catch (e) {}
@@ -1539,12 +1543,20 @@
         <select id="couloirNm">${[2, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50].map((v) => `<option value="${v}"${v === couloirNm ? " selected" : ""}>${v} NM</option>`).join("")}</select>
         <div class="seg seg-mini"><button data-cote="0" class="${couloirCote ? "" : "on"}">au total</button><button data-cote="1" class="${couloirCote ? "on" : ""}">de chaque côté</button></div>
       </div>
+      <div class="couloir-reglage"${couloirOn ? "" : " hidden"}><span class="couloir-lib">Rayon autour des terrains</span>
+        <select id="rayonAd">${[0, 5, 10, 15, 20, 25, 30].concat(rayonAd && ![0, 5, 10, 15, 20, 25, 30].includes(rayonAd) ? [rayonAd] : []).map((v) => `<option value="${v}"${v === rayonAd ? " selected" : ""}>${v ? v + " NM" : "aucun"}</option>`).join("")}</select>
+      </div>
       <div class="feuille-titre">Outils</div>
       <button class="ligne-resume" data-outil="skydemon">${ICO("route", "i-route")}<span class="zs-t">Importer une route SkyDemon</span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="zones">${ICO("crayon", "i-zone")}<span class="zs-t">Gérer Mes zones<small>ajouter, dates de SUP, couleurs</small></span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>`;
   }
   document.addEventListener("change", (e) => {
+    if (e.target && e.target.id === "rayonAd") {
+      rayonAd = +e.target.value;
+      try { localStorage.setItem("cRayonAd", String(rayonAd)); } catch (err) {}
+      rafraichir();
+    }
     if (e.target && e.target.id === "couloirNm") {
       couloirNm = +e.target.value;
       try { localStorage.setItem("cCouloirNm", String(couloirNm)); } catch (err) {}
