@@ -514,3 +514,8 @@ h2.section .pastille-nb { text-transform: none; letter-spacing: 0; }
 .seg-mini { flex: 1; margin: 0 !important; }
 .seg-mini button { padding: 6px 0 !important; font-size: 13px !important; }
 .couloir-lib { font-size: 13px; color: var(--doux); flex: 1; }
+
+/* 4.9.27 : mesure de distance */
+.mesure-etiq { display: inline-block; transform: translate(-50%, -140%); white-space: nowrap; background: #111; color: #fff; font: 700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.5); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+#ofmMap.regle { cursor: crosshair; }
+.ofm-boutons a#ofmRegle.on { background: #111 !important; border-color: #fff !important; }

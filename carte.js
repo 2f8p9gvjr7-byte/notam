@@ -974,7 +974,7 @@
       options: { position: "topright" },
       onAdd() {
         const div = L.DomUtil.create("div", "leaflet-bar ofm-boutons");
-        div.innerHTML = `<a href="#" id="ofmCouches" class="ofm-couches" title="Couches">${ICO("couches")}<span class="bdg-couches" hidden></span></a><a href="#" id="ofmPlein" title="Plein écran">${ICO("plein")}</a><a href="#" id="ofmCercles" title="Cercles indicatifs" hidden>◯</a><a href="#" id="ofmEditer" title="Dessiner la route sur la carte">${ICO("crayon")}</a>`;
+        div.innerHTML = `<a href="#" id="ofmCouches" class="ofm-couches" title="Couches">${ICO("couches")}<span class="bdg-couches" hidden></span></a><a href="#" id="ofmPlein" title="Plein écran">${ICO("plein")}</a><a href="#" id="ofmCercles" title="Cercles indicatifs" hidden>◯</a><a href="#" id="ofmEditer" title="Dessiner la route sur la carte">${ICO("crayon")}</a><a href="#" id="ofmRegle" title="Mesurer une distance">${ICO("regle")}</a>`;
         L.DomEvent.disableClickPropagation(div);
         return div;
       }
@@ -985,7 +985,10 @@
     $("#ofmCouches").addEventListener("click", (e) => { e.preventDefault(); ouvrirCouches(); });
     majBadgeCouches();
     $("#ofmEditer").addEventListener("click", (e) => { e.preventDefault(); basculerEdition(); });
-    ofm.on("click", (e) => { if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
+    ofm.on("click", (e) => { if (regleOn) clicRegle(e.latlng); else if (dessinZone) ajouterPointZone(e.latlng); else if (editionRoute) ajouterPointCarte(e.latlng); });
+    mesureCouche = L.layerGroup().addTo(ofm);
+    $("#ofmRegle").addEventListener("click", (e) => { e.preventDefault(); basculerRegle(); });
+    brancherDeuxDoigts();
     $("#ofmCercles").addEventListener("click", (e) => {
       e.preventDefault();
       masquerCercles = !masquerCercles;
@@ -1080,10 +1083,50 @@
   const deg2 = (v, w) => { const a = Math.abs(v); const d = Math.floor(a); const mf = (a - d) * 60; let m = Math.floor(mf); let sec = Math.round((mf - m) * 60); if (sec === 60) { sec = 0; m++; } return String(d).padStart(w, "0") + String(m).padStart(2, "0") + String(sec).padStart(2, "0"); };
   const fmtCoord = (lat, lon) => deg2(lat, 2) + (lat >= 0 ? "N" : "S") + deg2(lon, 3) + (lon >= 0 ? "E" : "W");
 
+  /* ---------- Mesure de distance : deux doigts posés sur la carte, ou la règle (deux touches) ---------- */
+  let mesureCouche = null, regleOn = false, regleA = null, mesureMinuteur = null;
+  function tracerMesure(a, b) {
+    if (!mesureCouche) return;
+    mesureCouche.clearLayers();
+    const dc = distCap({ lat: a.lat, lon: a.lng }, { lat: b.lat, lon: b.lng });
+    const nm = dc.nm < 10 ? dc.nm.toFixed(1).replace(".", ",") : String(Math.round(dc.nm));
+    L.polyline([a, b], { color: "#000", weight: 6, opacity: 0.45, interactive: false }).addTo(mesureCouche);
+    L.polyline([a, b], { color: "#fff", weight: 3, dashArray: "8 6", interactive: false }).addTo(mesureCouche);
+    [a, b].forEach((p) => L.circleMarker(p, { radius: 6, color: "#fff", weight: 2, fillColor: "#111", fillOpacity: 1, interactive: false }).addTo(mesureCouche));
+    const mil = L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2);
+    L.marker(mil, { interactive: false, icon: L.divIcon({ className: "", iconSize: null, iconAnchor: [0, 0],
+      html: `<span class="mesure-etiq">${nm} NM · ${String(Math.round(dc.cap)).padStart(3, "0")}°</span>` }) }).addTo(mesureCouche);
+  }
+  function effacerMesure(apres) {
+    clearTimeout(mesureMinuteur);
+    mesureMinuteur = setTimeout(() => { if (!regleOn && mesureCouche) mesureCouche.clearLayers(); }, apres || 0);
+  }
+  function basculerRegle() {
+    regleOn = !regleOn; regleA = null;
+    if (regleOn && editionRoute) basculerEdition();
+    const b = $("#ofmRegle"); if (b) b.classList.toggle("on", regleOn);
+    $("#ofmMap").classList.toggle("regle", regleOn);
+    if (regleOn) toast("Règle : touchez un premier point, puis un second. Touchez encore pour recommencer.", 4500);
+    else effacerMesure(0);
+  }
+  function clicRegle(ll) {
+    if (!regleA) { regleA = ll; mesureCouche.clearLayers(); L.circleMarker(ll, { radius: 6, color: "#fff", weight: 2, fillColor: "#111", fillOpacity: 1, interactive: false }).addTo(mesureCouche); return; }
+    tracerMesure(regleA, ll); regleA = null;
+  }
+  function brancherDeuxDoigts() {
+    const c = ofm.getContainer();
+    const pt = (t) => { const r = c.getBoundingClientRect(); return ofm.containerPointToLatLng(L.point(t.clientX - r.left, t.clientY - r.top)); };
+    let actif = false;
+    c.addEventListener("touchstart", (e) => { if (e.touches.length === 2) { actif = true; clearTimeout(mesureMinuteur); tracerMesure(pt(e.touches[0]), pt(e.touches[1])); } }, { passive: true });
+    c.addEventListener("touchmove", (e) => { if (actif && e.touches.length === 2) tracerMesure(pt(e.touches[0]), pt(e.touches[1])); }, { passive: true });
+    c.addEventListener("touchend", (e) => { if (actif && e.touches.length < 2) { actif = false; effacerMesure(4000); } }, { passive: true });
+  }
+
   /* Mode « modifier la route » : toucher la carte ajoute un point, glisser déplace, toucher un point le supprime */
   let editionRoute = false;
   function basculerEdition() {
     editionRoute = !editionRoute;
+    if (editionRoute && regleOn) basculerRegle();
     if (editionRoute && dessinZone) { dessinZone = false; const v = lireFormZone(); afficherZones(); remplirForm(v); }
     const b = $("#ofmEditer");
     if (b) b.classList.toggle("on", editionRoute);
