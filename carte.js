@@ -1130,15 +1130,20 @@
     if (!sig) return null;
     let ref = null;
     try { ref = JSON.parse(localStorage.getItem("cCouloirRef") || "null"); } catch (e) {}
+    let dejaRegle = "";
+    try { dejaRegle = localStorage.getItem("cReglagesSofia2") || ""; } catch (e) {}
+    if (dejaRegle !== sig) {                             // demi-couloir et rayon de ce briefing, une fois
+      const en = dernierTri.entete;
+      if (en && en.couloirNm > 0) { couloirNm = en.couloirNm; couloirCote = !!en.couloirCote; }
+      if (en) rayonAd = en.rayonNm > 0 && en.rayonNm <= 100 ? en.rayonNm : 0;
+      try {
+        localStorage.setItem("cRayonAd", String(rayonAd));
+        localStorage.setItem("cCouloirNm", String(couloirNm)); localStorage.setItem("cCouloirCote", couloirCote ? "1" : "0");
+        localStorage.setItem("cReglagesSofia2", sig);
+      } catch (e) {}
+    }
     if ((!ref || ref.sig !== sig) && pts.length > 1) {   // nouveau briefing : le couloir suit la route du moment
       ref = { sig, pts: pts.map((p) => [p.lat, p.lon]) };
-      const en = dernierTri.entete;
-      if (en && en.couloirNm > 0) {
-        couloirNm = en.couloirNm; couloirCote = !!en.couloirCote;
-        rayonAd = en.rayonNm > 0 && en.rayonNm <= 100 ? en.rayonNm : 0;
-        try { localStorage.setItem("cRayonAd", String(rayonAd)); } catch (e) {}
-        try { localStorage.setItem("cCouloirNm", String(couloirNm)); localStorage.setItem("cCouloirCote", couloirCote ? "1" : "0"); } catch (e) {}
-      }
       try { localStorage.setItem("cCouloirRef", JSON.stringify(ref)); } catch (e) {}
     }
     return ref && ref.sig === sig ? ref : null;
@@ -1176,17 +1181,20 @@
           const prev = out[out.length - 1];
           const a0 = Math.atan2(prev[1] - ay, prev[0] - ax), a1 = Math.atan2(ny, nx);
           let d = a1 - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-          for (let k = 1; k < 8; k++) out.push([ax + r * Math.cos(a0 + (d * k) / 8), ay + r * Math.sin(a0 + (d * k) / 8)]);
+          for (let k = 1; k < 48; k++) out.push([ax + r * Math.cos(a0 + (d * k) / 48), ay + r * Math.sin(a0 + (d * k) / 48)]);
         }
         out.push([ax + nx * r, ay + ny * r], [bx + nx * r, by + ny * r]);
       }
       return out;
     };
-    const bout = (c, de) => { const o = []; for (let k = 1; k < 12; k++) { const a = de + (Math.PI * k) / 12; o.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]); } return o; };
+    // demi-cercle de a0 à a0 - π (sens horaire), qui passe par l'avant du segment
+    const bout = (c, a0) => { const o = []; for (let k = 1; k < 72; k++) { const a = a0 - (Math.PI * k) / 72; o.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]); } return o; };
     const g = cote(1), d = cote(-1).reverse();
     const [ex, ey] = xy[xy.length - 1], [px, py] = xy[xy.length - 2];
     const [sx, sy] = xy[0], [qx, qy] = xy[1];
-    const angFin = Math.atan2(-(ex - px), ey - py), angDeb = Math.atan2(qx - sx, -(qy - sy));
+    const dirFin = Math.atan2(ey - py, ex - px), dirDeb = Math.atan2(qy - sy, qx - sx);
+    const angFin = dirFin + Math.PI / 2;          // côté gauche → avant → côté droit
+    const angDeb = dirDeb - Math.PI / 2;          // côté droit → arrière → côté gauche
     const poly = [...g, ...bout([ex, ey], angFin), ...d, ...bout([sx, sy], angDeb)];
     return poly.map(([x, y]) => P.ll(x, y));
   }
@@ -1212,10 +1220,10 @@
       return o;
     };
     const contours = [densifier(contourCouloir(ref, r).map(([la, lo]) => P.xy(la, lo)))];
-    ads.forEach((c) => { const o = []; for (let k = 0; k < 180; k++) { const t = (2 * Math.PI * k) / 180; o.push([c[0] + rAd * Math.cos(t), c[1] + rAd * Math.sin(t)]); } contours.push(o); });
+    ads.forEach((c) => { const o = []; for (let k = 0; k < 360; k++) { const t = (2 * Math.PI * k) / 360; o.push([c[0] + rAd * Math.cos(t), c[1] + rAd * Math.sin(t)]); } contours.push(o); });
     const runs = [];
     contours.forEach((pts) => {
-      const ext = pts.map((q) => f(q) > -0.02);
+      const ext = pts.map((q) => f(q) > -0.03);
       const debut = ext.indexOf(false);           // démarrer sur un point intérieur pour ne pas couper un tronçon en deux
       const n = pts.length, ordre = debut < 0 ? [...Array(n).keys(), 0] : Array.from({ length: n + 1 }, (_, k) => (debut + k) % n);
       let cur = null;
