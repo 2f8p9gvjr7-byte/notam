@@ -992,16 +992,41 @@
       attribution: '© <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a> (OFMA General Users\' License)'
     }).addTo(ofm);
     FondBossy.brancher(ofm);
+    Fond250.brancher(ofm);
     let fond = "ofm";
-    try { if (localStorage.getItem("cFond") === "bossy") fond = "bossy"; } catch (e) {}
+    try { const f0 = localStorage.getItem("cFond"); if (f0 === "bossy" || f0 === "c250") fond = f0; } catch (e) {}
     async function appliquerFond() {
       if (fond === "bossy" && !(await FondBossy.present())) fond = "ofm";
-      if (fond === "bossy") { ofm.removeLayer(coucheOFM); FondBossy.activer(true); }
-      else { FondBossy.activer(false); if (!ofm.hasLayer(coucheOFM)) coucheOFM.addTo(ofm); }
+      if (fond === "c250" && !(await Fond250.present())) fond = "ofm";
+      FondBossy.activer(fond === "bossy");
+      Fond250.activer(fond === "c250");
+      // 250k : OFM reste dessous, visible hors de la feuille
+      if (fond === "bossy") ofm.removeLayer(coucheOFM); else if (!ofm.hasLayer(coucheOFM)) coucheOFM.addTo(ofm);
       try { localStorage.setItem("cFond", fond); } catch (e) {}
       $("#fondOfm").classList.toggle("actif", fond === "ofm");
       $("#fondBossy").classList.toggle("actif", fond === "bossy");
+      $("#fond250").classList.toggle("actif", fond === "c250");
+      if (typeof majNiveaux === "function") majNiveaux();
     }
+    importer250 = async (f) => {
+      if (!f) return;
+      if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier carte-250k-strasbourg-2026.kmz", 4000); return; }
+      try {
+        const progres = (p, t) => toast(`Carte 250k : ${t || "enregistrement"}${p != null ? " " + Math.round(p * 100) + " %" : "…"}`, 60000);
+        const idx = await Fond250.importer(f, progres, null);
+        if (!idx.px || idx.px !== 512) { await Fond250.supprimer(); throw new Error("ce n'est pas le fichier de la carte 250k préparé pour l'appli"); }
+        toast("Carte 250k enregistrée sur cet appareil. Le fichier .kmz n’est plus nécessaire ici.", 6000);
+        dispo250 = true; fond = "c250"; appliquerFond();
+        if (ofm.getZoom() < 8) ofm.setView([48.4, 7.0], 9);
+      } catch (e) { toast("Carte 250k non chargée : " + (e && e.message || e), 6000); }
+      majBouton250();
+    };
+    let dispo250 = false;
+    Fond250.present().then((ok) => { dispo250 = ok; majBouton250(); });
+    $("#fond250").addEventListener("click", () => {
+      if (!dispo250) { $("#c250Fichier").click(); toast("Choisissez le fichier carte-250k-strasbourg-2026.kmz (une seule fois)", 3500); return; }
+      fond = "c250"; appliquerFond();
+    });
     importerKmz = async (f) => {
       if (!f) return;
       if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier .kmz de la CartaBossy", 4000); return; }
@@ -1654,7 +1679,18 @@
     } catch (e) { toast("Fichier illisible : " + (e && e.message || e), 4500); }
   });
 
-  let importerKmz = null;
+  let importerKmz = null, importer250 = null;
+  function majBouton250() {
+    Fond250.present().then((ok) => { $("#fond250").textContent = ok ? "250k" : "250k (charger…)"; if (typeof majNiveaux === "function") majNiveaux(); });
+  }
+  $("#c250Fichier").addEventListener("change", () => {
+    const inp = $("#c250Fichier"), f = inp.files && inp.files[0];
+    inp.value = "";
+    if (!f) return;
+    if (mode !== "ofm") choisirMode("ofm");
+    const go = () => (importer250 ? importer250(f) : setTimeout(go, 200));
+    go();
+  });
   function majBoutonKmz() {
     FondBossy.present().then((ok) => { document.querySelectorAll(".bossy-charger").forEach((e) => { e.hidden = ok; }); $("#fondEdition").hidden = !ok; $("#fondBossy").textContent = ok ? "🗺 Bossy" : "🗺 Bossy (charger…)"; });
   }
@@ -1677,15 +1713,18 @@
     const c = document.getElementById("couchesContenu");
     if (!c) return;
     const bossyOn = mode === "ofm" && $("#fondBossy").classList.contains("actif");
+    const on250 = mode === "ofm" && $("#fond250").classList.contains("actif");
     const bossyLib = /charger/.test($("#fondBossy").textContent) ? "Bossy…" : "Bossy";
+    const lib250 = /charger/.test($("#fond250").textContent) ? "250k…" : "250k";
     const places = items.filter((i) => i.forme).length;
     const zVis = zones.filter((z) => z.visible !== false && !horsPeriode(z)).length;
     const sw = (id, on) => `<button class="inter${on ? " on" : ""}" data-couche="${id}" role="switch" aria-checked="${on}"></button>`;
     c.innerHTML = `
       <div class="feuille-titre">Carte affichée<button id="couchesFermer" aria-label="Fermer">${ICO("fermer")}</button></div>
       <div class="seg">
-        <button data-fond="ofm" class="${mode === "ofm" && !bossyOn ? "on" : ""}">${ICO("globe")}OFM</button>
+        <button data-fond="ofm" class="${mode === "ofm" && !bossyOn && !on250 ? "on" : ""}">${ICO("globe")}OFM</button>
         <button data-fond="bossy" class="${bossyOn ? "on" : ""}">${ICO("carte")}${bossyLib}</button>
+        <button data-fond="c250" class="${on250 ? "on" : ""}">${ICO("carte")}${lib250}</button>
         <button data-fond="capture" class="${mode === "capture" ? "on" : ""}">${ICO("image")}Image</button>
       </div>
       <div class="feuille-titre">Couches</div>
@@ -1703,7 +1742,8 @@
       <div class="feuille-titre">Outils</div>
       <button class="ligne-resume" data-outil="skydemon">${ICO("route", "i-route")}<span class="zs-t">Importer une route SkyDemon</span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="zones">${ICO("crayon", "i-zone")}<span class="zs-t">Gérer Mes zones<small>ajouter, dates de SUP, couleurs</small></span>${ICO("chev", "chev")}</button>
-      <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>`;
+      <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>
+      <button class="ligne-resume" data-outil="kmz250">${ICO("dossier", "i-route")}<span class="zs-t">${lib250 === "250k" ? "Charger une autre édition 250k" : "Charger la carte 250k (.kmz)"}<small>SIA Strasbourg Alsace Lorraine</small></span>${ICO("chev", "chev")}</button>`;
   }
   document.addEventListener("change", (e) => {
     if (e.target && e.target.id === "rayonAd") {
@@ -1728,7 +1768,7 @@
       if (f === "capture") { if (mode !== "capture") choisirMode("capture"); }
       else {
         if (mode !== "ofm") choisirMode("ofm");
-        const b = $(f === "bossy" ? "#fondBossy" : "#fondOfm");
+        const b = $({ bossy: "#fondBossy", c250: "#fond250" }[f] || "#fondOfm");
         if (b) b.click();
       }
       setTimeout(majCouches, 80);
@@ -1753,6 +1793,7 @@
       fermerCouches();
       if (o === "skydemon") $("#routeFichier").click();
       if (o === "kmz") $("#bossyFichier").click();
+      if (o === "kmz250") $("#c250Fichier").click();
       if (o === "zones") { const z = $("#zonesBloc"); z.open = true; setTimeout(() => z.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }
     }
   });
@@ -1766,13 +1807,16 @@
   /* Menu à deux niveaux : Cartes numériques (OFM / Bossy) · Cartes image (captures Bossy / AZBA) */
   function majNiveaux() {
     document.querySelectorAll("#niveau1 button").forEach((b) => b.classList.toggle("on", b.dataset.niveau === mode));
-    const bossyOn = $("#fondBossy").classList.contains("actif");
-    document.querySelectorAll("[data-fondnum]").forEach((b) => b.classList.toggle("on", b.dataset.fondnum === "bossy" ? bossyOn : !bossyOn));
+    const bossyOn = $("#fondBossy").classList.contains("actif"), on250 = $("#fond250").classList.contains("actif");
+    const actuel = on250 ? "c250" : bossyOn ? "bossy" : "ofm";
+    document.querySelectorAll("[data-fondnum]").forEach((b) => b.classList.toggle("on", b.dataset.fondnum === actuel));
+    const l2 = document.querySelector('[data-fondnum="c250"]');
+    if (l2) l2.textContent = /charger/.test($("#fond250").textContent) ? "250k…" : "250k";
     const lb = document.querySelector('[data-fondnum="bossy"]');
     if (lb) lb.textContent = /charger/.test($("#fondBossy").textContent) ? "Bossy (charger…)" : "Bossy";
   }
   document.querySelectorAll("#niveau1 button").forEach((b) => b.addEventListener("click", () => { if (mode !== b.dataset.niveau) choisirMode(b.dataset.niveau); majNiveaux(); }));
-  document.querySelectorAll("[data-fondnum]").forEach((b) => b.addEventListener("click", () => { const x = $(b.dataset.fondnum === "bossy" ? "#fondBossy" : "#fondOfm"); if (x) x.click(); setTimeout(majNiveaux, 100); }));
+  document.querySelectorAll("[data-fondnum]").forEach((b) => b.addEventListener("click", () => { const x = $({ bossy: "#fondBossy", c250: "#fond250" }[b.dataset.fondnum] || "#fondOfm"); if (x) x.click(); setTimeout(majNiveaux, 100); }));
   $("#nCouches").addEventListener("click", ouvrirCouches);
   new MutationObserver(majNiveaux).observe($("#fondBossy"), { attributes: true, childList: true, characterData: true, subtree: true });
 

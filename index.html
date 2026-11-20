@@ -130,11 +130,12 @@
       <div id="fondBascule" class="bascule petite fond-bascule ancien">
         <button id="fondOfm" class="actif">🌍 OFM</button>
         <button id="fondBossy">🗺 Bossy</button>
+        <button id="fond250">250k</button>
       </div>
       <div id="rtbaCarte" hidden></div>
       <div id="ofmBloc">
         <div class="capture-barre sous-barre" id="sousNum">
-          <div class="seg"><button data-fondnum="ofm">OFM</button><button data-fondnum="bossy">Bossy</button></div>
+          <div class="seg"><button data-fondnum="ofm">OFM</button><button data-fondnum="bossy">Bossy</button><button data-fondnum="c250">250k</button></div>
           <button id="nCouches" class="c-outil c-couches" aria-label="Couches"><svg class="ico"><use href="#i-couches"/></svg></button>
         </div>
         <div class="route-actions ancien">
@@ -149,6 +150,7 @@
         <div class="route-barre"><svg class="ico"><use href="#i-route"/></svg><div id="ofmRouteInfo" class="route-info"></div><button id="routeCrayon" aria-label="Modifier la route"><svg class="ico"><use href="#i-crayon"/></svg></button></div>
 
         <input id="bossyFichier" type="file" hidden>
+        <input id="c250Fichier" type="file" hidden>
         <div id="ofmMap" class="ofm-map"></div>
         <p id="fondEdition" class="note" hidden>Carte Bossy enregistrée sur cet appareil · <label class="lien" for="bossyFichier">charger une autre édition</label></p>
         <button id="ofmQuitter" class="ofm-quitter">✕ Quitter</button>
@@ -273,6 +275,7 @@
           <li><b>Vol local</b> : « LFGY » seul → cercle de rayon réglable.</li>
           <li>Numéros = NOTAM cochés (touchez pour le détail). Λ = obstacle. Pointillés = cercle indicatif (bouton ◯ pour les masquer).</li>
           <li><b>⛶</b> plein écran, <b>✕ Quitter</b> en bas pour sortir.</li>
+          <li><b>250k</b> : la carte SIA au 1/250 000 Strasbourg Alsace Lorraine, calée et découpée pour l'appli (fichier <b>carte-250k-strasbourg-2026.kmz</b>, ≈ 18 Mo). La 1ʳᵉ fois, touchez <b>250k</b> et choisissez ce fichier ; il est rangé dans l'appareil, hors connexion. Hors de la feuille, OFM reste visible dessous. Carte gratuite du SIA, sous sa licence d'utilisation : chacun télécharge sa propre copie.</li>
           <li><b>Carte numérique → OFM / Bossy</b> : votre CartaBossy à la place d'OFM, sans calage. La 1ʳᵉ fois, touchez <b>Bossy</b> et choisissez le fichier <b>.kmz</b> acheté : il est rangé dans l'appareil, hors connexion. Ensuite, passez de l'une à l'autre avec <b>OFM / Bossy</b>. Choisissez « Nord-Est seulement » (≈ 45 Mo) pour gagner de la place ; ensuite le fichier .kmz peut être supprimé de Fichiers. Nouvelle édition : lien « charger une autre édition » sous la carte.</li>
         </ul>
       </details>

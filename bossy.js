@@ -1,14 +1,14 @@
-/* Fond « Bossy » : carte CartaBossy (KMZ acheté par l'utilisateur) affichée sous les NOTAM.
+/* Fonds en KMZ : CartaBossy (achetée) et carte SIA 1/250 000 (gratuite, préparée en tuiles), affichées sous les NOTAM.
    Le KMZ est lu une seule fois, ses images sont rangées dans le téléphone (IndexedDB) :
    rien n'est envoyé sur Internet. */
-const FondBossy = (() => {
+function creerFondKmz(nomBase, nomPane, zPane) {
   let db = null, index = null, carte = null, couche = null, actif = false;
   const affichees = new Map(); // nom -> { ov, url }
 
   function base() {
     if (db) return Promise.resolve(db);
     return new Promise((ok, ko) => {
-      const r = indexedDB.open("qcode-bossy", 1);
+      const r = indexedDB.open(nomBase, 1);
       r.onupgradeneeded = () => { r.result.createObjectStore("t"); r.result.createObjectStore("m"); };
       r.onsuccess = () => { db = r.result; ok(db); };
       r.onerror = () => ko(r.error);
@@ -118,7 +118,9 @@ const FondBossy = (() => {
       progres && progres(Math.min(1, (i + 20) / tuiles.length), "enregistrement");
     }
     if (!garde.length) throw new Error("images illisibles dans ce fichier");
-    const idx = { zone: zone || null, nom: f.name, date: Date.now(), niveaux: nbNiv, pas, tuiles: garde.map(({ nom, n, s, e, w, niv }) => ({ nom, n, s, e, w, niv })) };
+    // taille des images : 512 px pour la carte 250k préparée, 1024 px pour la CartaBossy
+    const px = garde.some((t) => /^c250_/.test(t.nom)) ? 512 : 1024;
+    const idx = { px, zone: zone || null, nom: f.name, date: Date.now(), niveaux: nbNiv, pas, tuiles: garde.map(({ nom, n, s, e, w, niv }) => ({ nom, n, s, e, w, niv })) };
     await ecrire("m", [["index", idx]]);
     index = idx;
     return idx;
@@ -133,7 +135,9 @@ const FondBossy = (() => {
       const d = index.pas && index.pas[n];
       if (!d) continue;
       choix = n;
-      if (1024 / d >= pxDegCarte * 0.8) break;
+      // 250k : sur écran Retina on prend le niveau plus fin pour garder le texte net
+      const f = index.px === 512 ? Math.min(2, window.devicePixelRatio || 1) * 0.8 : 0.8;
+      if ((index.px || 1024) / d >= pxDegCarte * f) break;
     }
     return choix;
   }
@@ -150,17 +154,18 @@ const FondBossy = (() => {
       if (affichees.has(t.nom)) continue;
       affichees.set(t.nom, { ov: null, url: null });
       const v = await lireObj("t", t.nom);
-      const blob = v && (v instanceof Blob ? v : new Blob([v], { type: "image/jpeg" }));
+      const type = /\.webp$/i.test(t.nom) ? "image/webp" : /\.png$/i.test(t.nom) ? "image/png" : "image/jpeg";
+      const blob = v && (v instanceof Blob ? v : new Blob([v], { type }));
       if (!blob || !affichees.has(t.nom) || !actif) { affichees.delete(t.nom); continue; }
       const url = URL.createObjectURL(blob);
-      const ov = L.imageOverlay(url, [[t.s, t.w], [t.n, t.e]], { pane: "bossy", interactive: false });
+      const ov = L.imageOverlay(url, [[t.s, t.w], [t.n, t.e]], { pane: nomPane, interactive: false });
       couche.addLayer(ov);
       affichees.set(t.nom, { ov, url });
     }
   }
   function brancher(map) {
     carte = map;
-    if (!map.getPane("bossy")) { const p = map.createPane("bossy"); p.style.zIndex = 250; p.style.pointerEvents = "none"; }
+    if (!map.getPane(nomPane)) { const p = map.createPane(nomPane); p.style.zIndex = zPane; p.style.pointerEvents = "none"; }
     couche = L.layerGroup().addTo(map);
     map.on("moveend zoomend", rafraichir);
   }
@@ -169,5 +174,9 @@ const FondBossy = (() => {
     if (!oui) { for (const [, o] of affichees) { if (o.ov) couche.removeLayer(o.ov); if (o.url) URL.revokeObjectURL(o.url); } affichees.clear(); }
     else rafraichir();
   }
-  return { present, importer, brancher, activer, charger };
-})();
+  async function supprimer() { activer(false); await vider(); index = null; }
+  return { present, importer, brancher, activer, charger, supprimer };
+}
+const FondBossy = creerFondKmz("qcode-bossy", "bossy", 250);
+/* Carte SIA 1/250 000 Strasbourg Alsace Lorraine, calée sur son quadrillage et découpée en tuiles (KMZ préparé) */
+const Fond250 = creerFondKmz("qcode-250k", "c250", 255);
