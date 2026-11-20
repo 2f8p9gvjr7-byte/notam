@@ -1,8 +1,9 @@
+var toastTimer = null; // déclaré en tête : toast() peut servir dès le démarrage
 /* Décodeur Q-code NOTAM — interface.
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.32";
+const APP_VERSION = "4.9.33";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;
@@ -834,7 +835,6 @@ window.addEventListener("online", majStatut);
 window.addEventListener("offline", majStatut);
 majStatut();
 
-let toastTimer = null;
 function toast(msg, duree) {
   const t = $("#toast");
   t.textContent = msg;
