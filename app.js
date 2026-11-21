@@ -3,7 +3,7 @@ var toastTimer = null; // déclaré en tête : toast() peut servir dès le déma
    IMPORTANT : à chaque modification de l'appli, augmenter APP_VERSION ici
    ET VERSION dans sw.js (mêmes valeurs). C'est ce changement qui déclenche
    la mise à jour automatique sur les téléphones. */
-const APP_VERSION = "4.9.34";
+const APP_VERSION = "4.9.35";
 
 const $ = (s) => document.querySelector(s);
 document.getElementById("version").textContent = "Version " + APP_VERSION;

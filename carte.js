@@ -15,9 +15,10 @@
   let ptsCal = [];             // points validés pendant le calage
   let items = [];              // NOTAM affichés (avec formes calculées)
 
-  /* Deux captures possibles : carte Bossy (calage sur le quadrillage) et carte AZBA (calage sur des lieux connus) */
-  let slot = "bossy";
-  try { slot = localStorage.getItem("cSlot") === "azba" ? "azba" : "bossy"; } catch (e) {}
+  /* Deux captures possibles : carte AZBA (par défaut) et « Autre carte » (VAC, Bossy, autre région…) ;
+     la clé interne « bossy » est gardée pour ne pas perdre les captures déjà calées */
+  let slot = "azba";
+  try { slot = localStorage.getItem("cSlot") === "bossy" ? "bossy" : "azba"; } catch (e) {}
   const cleImage = () => (slot === "azba" ? "image_azba" : "image");
   const cleCal = () => (slot === "azba" ? "cCal_azba" : "cCal");
 
