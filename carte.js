@@ -1010,12 +1010,18 @@
     }
     importer250 = async (f) => {
       if (!f) return;
-      if (!/\.kmz$/i.test(f.name)) { toast("Choisissez le fichier carte-250k-strasbourg-2026.kmz", 4000); return; }
+      const pdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+      if (!pdf && !/\.kmz$/i.test(f.name)) { toast("Choisissez le PDF du SIA « Carte Strasbourg Alsace Lorraine » (ou un fichier .kmz de la carte 250k)", 5000); return; }
       try {
-        const progres = (p, t) => toast(`Carte 250k : ${t || "enregistrement"}${p != null ? " " + Math.round(p * 100) + " %" : "…"}`, 60000);
-        const idx = await Fond250.importer(f, progres, null);
+        const progres = (p, t) => toast(`Carte 250k : ${t || "enregistrement"}${p != null ? " " + Math.round(p * 100) + " %" : "…"}`, 600000);
+        let idx;
+        if (pdf) {
+          progres(null, "préparation (1 à 3 min, gardez l'appli ouverte)");
+          const tuiles = await Conv250.convertir(f, progres);
+          idx = await Fond250.enregistrer(tuiles, f.name, progres);
+        } else idx = await Fond250.importer(f, progres, null);
         if (!idx.px || idx.px !== 512) { await Fond250.supprimer(); throw new Error("ce n'est pas le fichier de la carte 250k préparé pour l'appli"); }
-        toast("Carte 250k enregistrée sur cet appareil. Le fichier .kmz n’est plus nécessaire ici.", 6000);
+        toast(`Carte 250k enregistrée sur cet appareil. Le fichier ${pdf ? "PDF" : ".kmz"} n’est plus nécessaire ici.`, 6000);
         dispo250 = true; fond = "c250"; appliquerFond();
         if (ofm.getZoom() < 8) ofm.setView([48.4, 7.0], 9);
       } catch (e) { toast("Carte 250k non chargée : " + (e && e.message || e), 6000); }
@@ -1024,7 +1030,7 @@
     let dispo250 = false;
     Fond250.present().then((ok) => { dispo250 = ok; majBouton250(); });
     $("#fond250").addEventListener("click", () => {
-      if (!dispo250) { $("#c250Fichier").click(); toast("Choisissez le fichier carte-250k-strasbourg-2026.kmz (une seule fois)", 3500); return; }
+      if (!dispo250) { $("#c250Fichier").click(); toast("Choisissez le PDF du SIA « Carte Strasbourg Alsace Lorraine » (une seule fois)", 4000); return; }
       fond = "c250"; appliquerFond();
     });
     importerKmz = async (f) => {
@@ -1743,7 +1749,7 @@
       <button class="ligne-resume" data-outil="skydemon">${ICO("route", "i-route")}<span class="zs-t">Importer une route SkyDemon</span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="zones">${ICO("crayon", "i-zone")}<span class="zs-t">Gérer Mes zones<small>ajouter, dates de SUP, couleurs</small></span>${ICO("chev", "chev")}</button>
       <button class="ligne-resume" data-outil="kmz">${ICO("dossier", "i-route")}<span class="zs-t">${bossyLib === "Bossy" ? "Charger une autre édition Bossy" : "Charger ma CartaBossy (.kmz)"}</span>${ICO("chev", "chev")}</button>
-      <button class="ligne-resume" data-outil="kmz250">${ICO("dossier", "i-route")}<span class="zs-t">${lib250 === "250k" ? "Charger une autre édition 250k" : "Charger la carte 250k (.kmz)"}<small>SIA Strasbourg Alsace Lorraine</small></span>${ICO("chev", "chev")}</button>`;
+      <button class="ligne-resume" data-outil="kmz250">${ICO("dossier", "i-route")}<span class="zs-t">${lib250 === "250k" ? "Charger une autre édition 250k" : "Charger la carte 250k (PDF du SIA)"}<small>PDF gratuit du SIA « Strasbourg Alsace Lorraine »</small></span>${ICO("chev", "chev")}</button>`;
   }
   document.addEventListener("change", (e) => {
     if (e.target && e.target.id === "rayonAd") {

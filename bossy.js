@@ -175,7 +175,26 @@ function creerFondKmz(nomBase, nomPane, zPane) {
     else rafraichir();
   }
   async function supprimer() { activer(false); await vider(); index = null; }
-  return { present, importer, brancher, activer, charger, supprimer };
+  // Tuiles déjà préparées dans l'appareil (conversion du PDF) : { nom, blob, n, s, e, w }, nom en c250_L{z}_…
+  async function enregistrer(liste, nomFichier, progres) {
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+    const tuiles = liste.map((t) => ({ ...t, deg: t.e - t.w, niv: +t.nom.match(/_L(\d+)_/)[1] }));
+    const n0 = Math.min(...tuiles.map((t) => t.niv));
+    tuiles.forEach((t) => { t.niv -= n0; });
+    const nbNiv = Math.max(...tuiles.map((t) => t.niv)) + 1;
+    const pas = [...Array(nbNiv).keys()].map((n) => Math.max(...tuiles.filter((t) => t.niv === n).map((t) => t.deg), 0));
+    activer(false);
+    await vider(); index = null;
+    for (let i = 0; i < tuiles.length; i += 25) {
+      await ecrire("t", tuiles.slice(i, i + 25).map((t) => [t.nom, t.blob]));
+      progres && progres(Math.min(1, (i + 25) / tuiles.length), "enregistrement");
+    }
+    const idx = { px: 512, zone: null, nom: nomFichier, date: Date.now(), niveaux: nbNiv, pas, tuiles: tuiles.map(({ nom, n, s, e, w, niv }) => ({ nom, n, s, e, w, niv })) };
+    await ecrire("m", [["index", idx]]);
+    index = idx;
+    return idx;
+  }
+  return { present, importer, brancher, activer, charger, supprimer, enregistrer };
 }
 const FondBossy = creerFondKmz("qcode-bossy", "bossy", 250);
 /* Carte SIA 1/250 000 Strasbourg Alsace Lorraine, calée sur son quadrillage et découpée en tuiles (KMZ préparé) */
